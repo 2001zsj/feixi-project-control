@@ -1,7 +1,7 @@
 # 铁塔项目交接记忆（肥西新建站推进系统）
 
 更新时间：2026-09-19 18:09（北京时间）
-当前系统版本：V0.8.52
+当前系统版本：V0.8.53
 生产地址：https://feixi-project-control.vercel.app
 GitHub：https://github.com/2001zsj/feixi-project-control
 主文件：index.html
@@ -237,7 +237,7 @@ https://github.com/2001zsj/feixi-project-control
 修改 GitHub main 分支 index.html → Vercel 自动部署 production。
 不要优先使用直接Vercel上传；GitHub自动部署是当前稳定工作流。
 
-当前生产版本：V0.8.52。
+当前生产版本：V0.8.53。
 当前最新部署已READY。
 
 ## 十四、后续新对话执行规则
@@ -348,3 +348,11 @@ https://github.com/2001zsj/feixi-project-control
 - 已超过48个工作日总工期时标红。
 - 节点逾期保持黄色提醒。
 - “施工问题”属于独立问题状态，仍按既定规则红色标识并自动置顶，不与整体工期预警混淆。
+
+
+## 二十四、移除施工排程独立模块（2026-09-20）
+
+- 顶部“施工排程”入口删除。
+- 原“施工排程”与“施工中”功能重复，不再作为独立模块保留。
+- 施工问题置顶、节点逾期提醒、48个工作日工期风险继续统一在“施工中”模块管理。
+- 旧的 #schedule 地址不再打开独立页面，自动落到“施工中”。

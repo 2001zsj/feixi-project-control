@@ -1,6 +1,6 @@
 {
-  "snapshot_at": "2026-09-20T16:30:00+08:00",
-  "app_version": "V0.8.58",
+  "snapshot_at": "2026-09-20T16:40:00+08:00",
+  "app_version": "V0.8.59",
   "production_url": "https://feixi-project-control.vercel.app",
   "repository": "2001zsj/feixi-project-control",
   "total_stations": 75,
@@ -1576,7 +1576,7 @@
       "sourceMarker": "",
       "sourceFile": "2026年新建选址(5).xlsx",
       "demandDate": "4月",
-      "towerName": "",
+      "towerName": "肥西横排头路与将军岭中路交口东南",
       "siteCode": "",
       "establishRef": "",
       "selectionDone": false,

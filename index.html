@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>肥西站点推进控制台 V0.8.48</title>
+<title>肥西站点推进控制台 V0.8.49</title>
 <style>
 *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;background:#f3f5f7;color:#172033;font:12.5px/1.45 "Microsoft YaHei","Segoe UI",Arial,sans-serif}button,input,select,textarea{font:inherit}.top{height:42px;background:#162235;color:#fff;display:flex;align-items:center;padding:0 12px;gap:10px;position:sticky;top:0;z-index:20;box-shadow:0 1px 3px rgba(0,0,0,.12)}.brand{font-weight:700;font-size:14px;white-space:nowrap}.nav{display:flex;gap:2px}.nav button{background:transparent;border:0;color:#bdc8d7;padding:5px 9px;border-radius:4px;cursor:pointer}.nav button.on,.nav button:hover{background:#263a55;color:#fff}.search{margin-left:auto;display:flex;gap:4px;width:min(410px,36vw)}.search input{flex:1;min-width:0;background:#fff}.wrap{padding:9px 11px;max-width:1480px;margin:0 auto}.title{display:flex;align-items:center;gap:8px;margin:1px 0 7px;min-height:29px}.title h1{font-size:16px;margin:0;line-height:1.2}.muted{color:#748092}.tiny{font-size:10.5px}.btn{border:1px solid #c8d1dc;background:#fff;color:#29394e;border-radius:4px;padding:4px 8px;cursor:pointer;line-height:1.35}.btn:hover{border-color:#7893b4;background:#fbfcfe}.btn.primary{background:#2767df;border-color:#2767df;color:#fff}.btn.green{background:#17825a;border-color:#17825a;color:#fff}.btn.danger{background:#c74747;border-color:#c74747;color:#fff}.input,input,select,textarea{border:1px solid #c8d1dc;border-radius:4px;padding:4px 6px;background:#fff;color:#172033;min-height:28px}textarea{min-height:58px;resize:vertical}.summary{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}.summary button{background:#fff;border:1px solid #dce2e9;border-radius:5px;padding:5px 9px;cursor:pointer}.summary b{font-size:14px;margin-left:4px}.red{color:#c83c3c}.orange{color:#a96800}.green{color:#17744b}.blue{color:#2e61b7}.panel{background:#fff;border:1px solid #dde3ea;border-radius:6px;margin-bottom:7px;overflow:hidden}.ph{min-height:32px;display:flex;align-items:center;padding:0 9px;border-bottom:1px solid #e8ecf1;gap:6px;background:#fbfcfd}.ph b{font-size:13px}.ph .sp{flex:1}.pb{padding:7px 8px}.rows{display:grid;gap:4px}.row{display:grid;grid-template-columns:minmax(260px,2fr) minmax(220px,1.35fr) minmax(185px,1.15fr) 140px 20px;gap:7px;align-items:center;border:1px solid #e2e7ed;border-radius:5px;padding:6px 8px;background:#fff;cursor:pointer;min-height:51px}.row:hover{border-color:#95a9c2;background:#fbfdff}.name{font-weight:700;font-size:12.5px}.sub{font-size:10.5px;color:#7b8796;margin-top:1px}.lab{font-size:10px;color:#7b8796;margin-bottom:1px}.val{font-weight:600;word-break:break-word}.tag{display:inline-flex;align-items:center;padding:1px 6px;border-radius:9px;font-size:10px;background:#eef2f6;color:#56667a;line-height:17px}.tag.r{background:#fff0f0;color:#bc3636}.tag.o{background:#fff4df;color:#986000}.tag.g{background:#eaf7ef;color:#167148}.tag.b{background:#eaf1ff;color:#315da6}.filters{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:7px}.filters .sp{flex:1}.empty{text-align:center;color:#8491a1;padding:17px}.base{display:grid;grid-template-columns:repeat(5,minmax(115px,1fr));gap:6px 12px}.base>div{min-width:0}.editbox{margin-top:8px;padding:9px;background:#f8fafc;border:1px solid #dfe5ed;border-radius:6px}.editgrid{display:grid;grid-template-columns:repeat(5,minmax(115px,1fr));gap:7px 10px}.editgrid input{width:100%}.editactions{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}.focus{display:grid;grid-template-columns:minmax(0,1fr) 155px;gap:8px}.problem{font-size:14px;font-weight:700;margin:1px 0 4px}.follow{display:grid;grid-template-columns:minmax(0,1fr) 105px auto;gap:6px;align-items:end}.history{margin-top:7px;border-top:1px solid #edf0f4}.hist{display:grid;grid-template-columns:125px minmax(0,1fr) 64px;gap:7px;padding:5px 0;border-bottom:1px dashed #e6ebf1}.actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap}.alert{background:#fff8e8;border:1px solid #edd598;color:#6f5516;border-radius:4px;padding:5px 7px;margin-bottom:6px}.ok{background:#ecf8f1;border:1px solid #c8e8d4;color:#236943;border-radius:4px;padding:5px 7px;margin-bottom:6px}.err{background:#ffecec;color:#992b2b;border:1px solid #e4b9b9;border-radius:5px;padding:9px;margin:9px}.toast{position:fixed;right:14px;bottom:14px;background:#162235;color:#fff;padding:7px 10px;border-radius:5px;display:none;z-index:30}.hide{display:none!important}.dashgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.homegrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px;align-items:start}.homepanel{margin-bottom:0}.homepanel .pb{padding:5px 7px}.hrows{display:grid;gap:4px}.hrow{display:grid;grid-template-columns:minmax(210px,1.15fr) minmax(180px,1fr) auto;gap:8px;align-items:center;border:1px solid #e2e7ed;border-radius:5px;padding:6px 8px;background:#fff;cursor:pointer;min-height:54px}.hrow:hover{border-color:#95a9c2;background:#fbfdff}.hproblem{min-width:0}.hproblem .val{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hstatus{text-align:right;white-space:nowrap}.panel-foot{display:flex;align-items:center;justify-content:flex-end;padding-top:6px}.riskwide{grid-column:1/-1;margin-top:0}.noriskbar{grid-column:1/-1;background:#fff;border:1px solid #dde3ea;border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;color:#66758a}.noriskbar b{color:#29394e}.compacthead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.compacthead .sp{flex:1}.deadline{display:grid;grid-template-columns:115px minmax(230px,1fr) 130px 130px;gap:8px;align-items:center}.daynum{font-size:20px;font-weight:800;line-height:1}.meter{height:8px;background:#e9edf2;border-radius:4px;overflow:hidden;margin-bottom:3px}.meter i{display:block;height:100%;background:#3d74d8}.meter.warn i{background:#d29427}.meter.bad i{background:#c84141}.risknote{font-weight:600}.timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:7px}.tl{border:1px solid #dde4ec;background:#f9fafc;border-radius:5px;padding:6px;min-height:67px;position:relative}.tl.done{background:#eef8f2;border-color:#cce7d6}.tl.now{background:#fff8e9;border-color:#ead49e}.tl.over{background:#fff0f0;border-color:#ecc0c0}.tl .n{font-weight:700;margin-bottom:3px}.tl .d{font-size:10.5px;color:#697789}.tl .d strong{color:#27384e;font-weight:600}.parallel{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px}.parallel .box{border:1px solid #dde4ec;border-radius:5px;padding:6px 8px;background:#fbfcfd;display:flex;align-items:center;gap:8px}.parallel .box b{min-width:42px}.parallel .box .sp{flex:1}.nodebar{display:grid;grid-template-columns:115px 130px auto auto;gap:5px;align-items:end;margin-top:7px;padding-top:7px;border-top:1px solid #edf0f4}.pausebanner{display:flex;align-items:center;gap:8px;padding:5px 7px;background:#fff2e8;border:1px solid #f0c8a8;border-radius:4px;margin-bottom:6px}.scheduleline{display:grid;grid-template-columns:minmax(220px,1.6fr) 115px 115px minmax(180px,1fr) 70px;gap:7px;align-items:center;border-bottom:1px solid #edf0f4;padding:6px 2px}.scheduleline:last-child{border-bottom:0}.scheduleline .urg{font-weight:700}.scheduleline .over{color:#c43b3b}.scheduleline .warn{color:#a76a00}.ghost{color:#9aa5b2}.base-note{display:flex;gap:12px;flex-wrap:wrap}.base-note span{white-space:nowrap}
 @media(max-width:1050px){.homegrid{grid-template-columns:1fr}.riskwide,.noriskbar{grid-column:1}.base{grid-template-columns:repeat(3,1fr)}.row{grid-template-columns:2fr 1.2fr 120px 20px}.row .optional{display:none}.deadline{grid-template-columns:105px 1fr 120px}.deadline .optional{display:none}.timeline{grid-template-columns:repeat(3,1fr)}.dashgrid{grid-template-columns:1fr}.scheduleline{grid-template-columns:1.4fr 100px 100px 1fr}.scheduleline .optional{display:none}}
@@ -424,14 +424,18 @@ function load(){
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){} }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function today(){return new Date().toISOString().slice(0,10)}
-function parseDate(s){if(!s)return null;const d=new Date(s+'T00:00:00');return isNaN(d)?null:d}
+function localDateStr(d=new Date()){
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+function today(){return localDateStr(new Date())}
+function parseDate(s){if(!s)return null;const p=String(s).slice(0,10).split('-').map(Number);if(p.length<3||!p[0]||!p[1]||!p[2])return null;const d=new Date(p[0],p[1]-1,p[2]);return isNaN(d)?null:d}
 function days(a,b=today()){const x=parseDate(a),y=parseDate(b);if(!x||!y)return null;return Math.floor((y-x)/86400000)}
 function fmtDT(s){if(!s)return '—';return s.replace('T',' ').slice(0,16)}
 function lastFollow(s){const arr=s.selectionFollowups||[]; if(arr.length)return arr[arr.length-1].date||arr[arr.length-1].time||''; return s.selectionLastFollowup||''}
 function followDays(s){const x=lastFollow(s); if(!x)return 9999; return days(x.slice(0,10))??9999}
 function due(s){return !s.selectionDone && s.followupEnabled!==false && s.selectionProblemStatus!=='已解决' && followDays(s)>=3}
-function addDate(s,n){const d=parseDate(s);if(!d)return '';d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+function addDate(s,n){const d=parseDate(s);if(!d)return '';d.setDate(d.getDate()+n);return localDateStr(d)}
 const CN_MAINLAND_CALENDAR={
   2025:{
     status:'official',
@@ -496,7 +500,7 @@ function addConstructionDays(s,n){
   const d=parseDate(s);if(!d||!isCalendarConfiguredDate(s))return '';
   let left=Number(n)||0,guard=0;
   while(left>0&&guard<1000){
-    const ds=d.toISOString().slice(0,10);
+    const ds=localDateStr(d);
     if(!isCalendarConfiguredDate(ds))return '';
     if(isConstructionWorkday(ds))left--;
     if(left===0)return ds;
@@ -510,7 +514,7 @@ function constructionDaysBetween(a,b){
   const dir=y>x?1:-1;let count=0,d=new Date(x),guard=0;
   while(((dir>0&&d<y)||(dir<0&&d>y))&&guard<2000){
     d.setDate(d.getDate()+dir);guard++;
-    const ds=d.toISOString().slice(0,10);
+    const ds=localDateStr(d);
     if(!isCalendarConfiguredDate(ds))return null;
     if(isConstructionWorkday(ds))count+=dir;
   }
@@ -520,7 +524,7 @@ function constructionDayOrdinal(a,b){
   const x=parseDate(a),y=parseDate(b);if(!x||!y||y<x||!calendarRangeConfigured(a,b))return null;
   let count=0,d=new Date(x),guard=0;
   while(d<=y&&guard<2000){
-    const ds=d.toISOString().slice(0,10);
+    const ds=localDateStr(d);
     if(!isCalendarConfiguredDate(ds))return null;
     if(isConstructionWorkday(ds))count++;
     d.setDate(d.getDate()+1);guard++;

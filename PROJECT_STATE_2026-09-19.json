@@ -1,6 +1,6 @@
 {
-  "snapshot_at": "2026-09-21T21:30:00+08:00",
-  "app_version": "V0.8.66",
+  "snapshot_at": "2026-09-21T21:38:00+08:00",
+  "app_version": "V0.8.67",
   "production_url": "https://feixi-project-control.vercel.app",
   "repository": "2001zsj/feixi-project-control",
   "total_stations": 75,
@@ -519,11 +519,11 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "机柜基础占用道板砖，正在沟通城管",
-      "currentStage": "待浇筑",
+      "currentSituation": "监理反馈：城管阻扰，正在协调；原计划2026-09-19进场、09-24浇筑、10-24装塔。",
+      "currentStage": "待进场放线",
       "lastUpdate": "2026-09-21",
       "establishDate": "2026-09-09",
-      "entryDate": "2026-09-15",
+      "entryDate": "",
       "pourDate": "",
       "towerDate": "",
       "powerDate": "",
@@ -558,7 +558,7 @@
       "buildMethod": "新建（单塔）",
       "buildConfig": "新增35米景观塔（6+6)+两单元机柜基础（单塔）",
       "constructionProblem": true,
-      "constructionProblemReason": "机柜基础占用道板砖，正在沟通城管"
+      "constructionProblemReason": "城管阻扰，正在协调"
     },
     {
       "id": "design-2026-010",
@@ -589,7 +589,7 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "已浇筑，待养护期装塔",
+      "currentSituation": "新建站总表：选址已完成，已立项26A09AHHF011005177；备注：已立项",
       "currentStage": "养护中",
       "lastUpdate": "2026-09-21",
       "establishDate": "2026-09-09",
@@ -1342,7 +1342,7 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "场租支付流程中，待对方开票",
+      "currentSituation": "监理反馈：时间来不及，计划销项。",
       "currentStage": "计划销项",
       "lastUpdate": "2026-09-21",
       "establishDate": "",
@@ -3812,7 +3812,7 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "位置已重新确认，需要大开挖，协调农户拆绿化",
+      "currentSituation": "监理反馈：观澜天下物业阻扰施工，正在协调。",
       "currentStage": "待浇筑",
       "lastUpdate": "2026-09-21",
       "establishDate": "2026-08-27",
@@ -3851,7 +3851,7 @@
       "buildMethod": "新建（单塔）",
       "buildConfig": "新建35米仿生树+两单元机柜基础（单塔）",
       "constructionProblem": true,
-      "constructionProblemReason": "位置已重新确认，需要大开挖，协调农户拆绿化"
+      "constructionProblemReason": "观澜天下物业阻扰施工，正在协调"
     },
     {
       "id": "design-2026-065",
@@ -3942,7 +3942,7 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "已立项，计划9月24日进场",
+      "currentSituation": "监理反馈：计划2026-09-24进场、09-28浇筑、10-28装塔。",
       "currentStage": "待进场放线",
       "lastUpdate": "2026-09-21",
       "establishDate": "2026-09-17",
@@ -4641,5 +4641,6 @@
       ]
     }
   ],
-  "verifiedScreenshotUpdateVersion": "20260921-v1"
+  "verifiedScreenshotUpdateVersion": "20260921-v1",
+  "constructionScreenshotRevertVersion": "20260921-v1"
 }

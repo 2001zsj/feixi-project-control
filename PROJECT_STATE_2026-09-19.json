@@ -6,8 +6,8 @@
   "total_stations": 75,
   "module_counts": {
     "normal_selection": 16,
-    "difficult_selection": 12,
-    "pending_establishment": 7,
+    "difficult_selection": 11,
+    "pending_establishment": 8,
     "construction": 13,
     "completed": 27
   },

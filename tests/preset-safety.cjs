@@ -1,0 +1,31 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const source=fs.readFileSync(path.join(root,'index.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const code=source.slice(0,source.lastIndexOf('try{load()}'));
+const key='feixi-v072-state',results=[];
+function boot(value,options={}){
+ const raw=value===null?null:JSON.stringify(value),store=new Map(raw===null?[]:[[key,raw]]);
+ const ctx=vm.createContext({console,Date,Map,Set,alert(){},localStorage:{getItem:k=>store.get(k)??null,setItem(k,v){if(options.failKey===k)throw Error('injected storage failure');store.set(k,v)}}});
+ vm.runInContext(code,ctx);ctx.store=store;ctx.raw=raw;ctx.run=s=>vm.runInContext(s,ctx);return ctx;
+}
+const fresh=boot(null);fresh.load();const template=JSON.parse(JSON.stringify(fresh.state));
+function old(){const x=JSON.parse(JSON.stringify(template));for(const k of Object.keys(x))if(/Version$|migration/i.test(k))delete x[k];return x}
+function test(name,fn){try{fn();results.push({name,pass:true})}catch(e){results.push({name,pass:false,error:e.message.slice(0,700)})}}
+test('old pending preset does not clear new project code',()=>{const x=old(),s=x.stations.find(s=>s.id==='design-2026-005');s.establishRef='USER-NEW-CODE';const c=boot(x);c.load();assert.equal(c.state.stations.find(row=>row.id===s.id).establishRef,'USER-NEW-CODE')});
+test('source preset preserves manual progress and problem',()=>{const x=old();x.stations.find(s=>s.id==='design-2026-028').selectionProgress='用户最新确认';x.stations[0].selectionProblem='新的现场问题';const c=boot(x);c.load();assert.equal(c.state.stations.find(s=>s.id==='design-2026-028').selectionProgress,'用户最新确认');assert.equal(c.state.stations[0].selectionProblem,'新的现场问题')});
+test('known wrong Huayi tower name is corrected',()=>{const x=old();x.stations.find(s=>s.id==='design-2026-026').towerName='肥西皋城路与周公山路交口西';const c=boot(x);c.load();assert.equal(c.state.stations.find(s=>s.id==='design-2026-026').towerName,'肥西横排头路与将军岭中路交口东南')});
+test('newer confirmed Huayi name is retained with conflict',()=>{const x=old();x.stations.find(s=>s.id==='design-2026-026').towerName='用户新确认塔名';const c=boot(x);c.load();assert.equal(c.state.stations.find(s=>s.id==='design-2026-026').towerName,'用户新确认塔名');assert.ok(c.state.migrationConflicts.some(x=>x.stationId==='design-2026-026'&&x.field==='towerName'))});
+test('false and explicit empty manual fields are not treated as missing',()=>{const x=old(),s=x.stations.find(s=>s.id==='design-2026-009');s.establishRef='';s.entryDate='';s.constructionProblem=false;s.constructionProblemReason='';const c=boot(x);c.load();const got=c.state.stations.find(s=>s.id==='design-2026-009');for(const k of ['establishRef','entryDate','constructionProblem','constructionProblemReason'])assert.equal(got[k],s[k])});
+test('manual node dates completion and histories survive missing markers',()=>{const x=old(),s=x.stations.find(s=>s.id==='design-2026-010');s.establishDate='2026-09-10';s.entryDate='2026-09-18';s.pourDate='2026-09-21';s.completeConfirmed=true;s.updates=[{text:'用户记录'}];s.selectionFollowups=[{text:'历史跟进'}];s.extra={nested:['任意字段']};const c=boot(x);c.load();const got=c.state.stations.find(row=>row.id===s.id);for(const k of ['establishDate','entryDate','pourDate','completeConfirmed','updates','selectionFollowups','extra'])assert.equal(JSON.stringify(got[k]),JSON.stringify(s[k]))});
+test('migration conflicts and audit are idempotent',()=>{const c=boot(old());c.load();const first=JSON.stringify(c.state);c.load();assert.equal(JSON.stringify(c.state),first)});
+test('failed main write preserves original and has no persisted completion marker',()=>{const c=boot(old(),{failKey:key});assert.throws(()=>c.load());assert.equal(c.store.get(key),c.raw);assert.equal(JSON.parse(c.store.get(key)).presetSafetyVersion,undefined)});
+test('failed backup prevents all main writes',()=>{const c=boot(old(),{failKey:key+':before-preset-safety-v1'});assert.throws(()=>c.load());assert.equal(c.store.get(key),c.raw)});
+test('candidate failure does not write partial migration',()=>{const c=boot(old());c.run("buildLegacyMigrationCandidate=()=>{throw Error('injected candidate failure')}");assert.throws(()=>c.load());assert.equal(c.store.get(key),c.raw)});
+test('fresh seed and existing up-to-date cache keep 75 IDs',()=>{for(const input of [null,template]){const c=boot(input);c.load();assert.equal(c.state.stations.length,75);assert.equal(new Set(c.state.stations.map(s=>s.id)).size,75)}});
+test('duplicate-order pair remains separate through full load',()=>{const c=boot(old());c.load();const pair=c.state.stations.filter(s=>s.demandOrder==='1226041515562086');assert.equal(pair.length,2);assert.equal(new Set(pair.map(s=>s.id)).size,2);assert.notEqual(pair[0].towerName,pair[1].towerName)});
+test('known correction still works when legacy marker says applied',()=>{const x=JSON.parse(JSON.stringify(template));delete x.presetSafetyVersion;x.stations.find(s=>s.id==='design-2026-026').towerName='肥西皋城路与周公山路交口西';const c=boot(x);c.load();assert.equal(c.state.stations.find(s=>s.id==='design-2026-026').towerName,'肥西横排头路与将军岭中路交口东南');assert.ok(c.state.migrationAudit.at(-1).applied.some(x=>x.field==='towerName'))});
+test('partially applied upgrade keeps manual fields and previous conflicts',()=>{const x=JSON.parse(JSON.stringify(template));delete x.presetSafetyVersion;delete x.selectionSourceContentVersion;x.migrationConflicts=[{stationId:'design-2026-028',field:'prior',kept:'历史冲突'}];x.stations.find(s=>s.id==='design-2026-028').selectionProgress='人工最新进展';const c=boot(x);c.load();assert.equal(c.state.stations.find(s=>s.id==='design-2026-028').selectionProgress,'人工最新进展');assert.equal(c.state.migrationConflicts[0].kept,'历史冲突');assert.equal(c.store.get(key+':before-preset-safety-v1'),c.raw)});
+fs.mkdirSync(path.join(root,'audit-evidence'),{recursive:true});
+fs.writeFileSync(path.join(root,'audit-evidence',process.env.PRESET_RESULT||'preset-safety-results.json'),JSON.stringify(results,null,2));
+for(const x of results)console.log(x.pass?'PASS '+x.name:'FAIL '+x.name+': '+x.error);
+console.log(`${results.filter(x=>x.pass).length}/${results.length} passed`);if(results.some(x=>!x.pass))process.exitCode=1;

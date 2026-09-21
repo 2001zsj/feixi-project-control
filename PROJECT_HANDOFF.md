@@ -237,7 +237,7 @@ https://github.com/2001zsj/feixi-project-control
 修改 GitHub main 分支 index.html → Vercel 自动部署 production。
 不要优先使用直接Vercel上传；GitHub自动部署是当前稳定工作流。
 
-当前生产版本：V0.8.65。
+当前生产版本：V0.8.66。
 当前最新部署已READY。
 
 ## 十四、后续新对话执行规则
@@ -488,3 +488,12 @@ https://github.com/2001zsj/feixi-project-control
 - 肥西高店运河新镇：9月21日最新进展“已看现场，场租沟通中”。
 
 本次没有依据旧截图去覆盖更晚的新建选址底册内容；观澜天下北等不在固定75站的记录不加入系统。新增 verifiedScreenshotUpdateVersion 迁移标记，并在写入前备份旧localStorage；若本地字段已被用户改成其他新值，保留本地值并记录冲突，不强制覆盖。
+
+
+## 三十五、undefined迁移报错修复（2026-09-21）
+
+- V0.8.65 首次执行9月21日截图更新迁移时，部分新时间字段原值不存在（undefined）。
+- 通用 clone() 使用 JSON.parse(JSON.stringify(x))，对 undefined 会抛出 “\"undefined\" is not valid JSON”。
+- V0.8.66 将 clone() 改为对 undefined 原样返回，其余值继续JSON深拷贝。
+- 报错发生在内存迁移阶段，主localStorage尚未保存，因此不会因该报错清空或覆盖原有用户数据。
+- 9月21日截图迁移版本仍使用 verifiedScreenshotUpdateVersion=20260921-v1；修复后可从原缓存重新安全执行。

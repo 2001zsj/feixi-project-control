@@ -1,6 +1,6 @@
 {
-  "snapshot_at": "2026-09-21T21:23:00+08:00",
-  "app_version": "V0.8.65",
+  "snapshot_at": "2026-09-21T21:30:00+08:00",
+  "app_version": "V0.8.66",
   "production_url": "https://feixi-project-control.vercel.app",
   "repository": "2001zsj/feixi-project-control",
   "total_stations": 75,

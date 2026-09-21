@@ -237,7 +237,7 @@ https://github.com/2001zsj/feixi-project-control
 修改 GitHub main 分支 index.html → Vercel 自动部署 production。
 不要优先使用直接Vercel上传；GitHub自动部署是当前稳定工作流。
 
-当前生产版本：V0.8.66。
+当前生产版本：V0.8.67。
 当前最新部署已READY。
 
 ## 十四、后续新对话执行规则
@@ -494,6 +494,15 @@ https://github.com/2001zsj/feixi-project-control
 
 - V0.8.65 首次执行9月21日截图更新迁移时，部分新时间字段原值不存在（undefined）。
 - 通用 clone() 使用 JSON.parse(JSON.stringify(x))，对 undefined 会抛出 “\"undefined\" is not valid JSON”。
-- V0.8.66 将 clone() 改为对 undefined 原样返回，其余值继续JSON深拷贝。
+- V0.8.67 将 clone() 改为对 undefined 原样返回，其余值继续JSON深拷贝。
 - 报错发生在内存迁移阶段，主localStorage尚未保存，因此不会因该报错清空或覆盖原有用户数据。
 - 9月21日截图迁移版本仍使用 verifiedScreenshotUpdateVersion=20260921-v1；修复后可从原缓存重新安全执行。
+
+
+## 三十六、施工中站点不使用本批截图更新（2026-09-21）
+
+- 用户明确要求：本批 Screenshots.zip 图片只用于更新选址中、疑难站址、待立项等非施工模块。
+- 施工中的13个站点本批不更新，不根据本批截图修改实际节点、施工阶段、施工问题或当前施工情况。
+- V0.8.65/66 曾尝试写入的施工站截图更新已在 V0.8.67 撤回。
+- 撤回范围仅限本批截图引入的精确值；如浏览器字段已经被用户手工改成其他新值，则保留本地值，不强制覆盖。
+- 后续施工中站点仅在用户明确提供新的施工进度依据并要求更新时再修改。

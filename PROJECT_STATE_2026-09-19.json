@@ -1,6 +1,6 @@
 {
-  "snapshot_at": "2026-09-20T17:12:00+08:00",
-  "app_version": "V0.8.63",
+  "snapshot_at": "2026-09-21T21:23:00+08:00",
+  "app_version": "V0.8.65",
   "production_url": "https://feixi-project-control.vercel.app",
   "repository": "2001zsj/feixi-project-control",
   "total_stations": 75,
@@ -519,11 +519,11 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "监理反馈：城管阻扰，正在协调；原计划2026-09-19进场、09-24浇筑、10-24装塔。",
-      "currentStage": "待进场放线",
-      "lastUpdate": "2026-09-19",
+      "currentSituation": "机柜基础占用道板砖，正在沟通城管",
+      "currentStage": "待浇筑",
+      "lastUpdate": "2026-09-21",
       "establishDate": "2026-09-09",
-      "entryDate": "",
+      "entryDate": "2026-09-15",
       "pourDate": "",
       "towerDate": "",
       "powerDate": "",
@@ -558,7 +558,7 @@
       "buildMethod": "新建（单塔）",
       "buildConfig": "新增35米景观塔（6+6)+两单元机柜基础（单塔）",
       "constructionProblem": true,
-      "constructionProblemReason": "城管阻扰，正在协调"
+      "constructionProblemReason": "机柜基础占用道板砖，正在沟通城管"
     },
     {
       "id": "design-2026-010",
@@ -589,9 +589,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "新建站总表：选址已完成，已立项26A09AHHF011005177；备注：已立项",
+      "currentSituation": "已浇筑，待养护期装塔",
       "currentStage": "养护中",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "2026-09-09",
       "entryDate": "2026-09-15",
       "pourDate": "2026-09-19",
@@ -1342,9 +1342,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "监理反馈：时间来不及，计划销项。",
+      "currentSituation": "场租支付流程中，待对方开票",
       "currentStage": "计划销项",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -3325,15 +3325,15 @@
       "selectionDone": false,
       "selectionDoneDate": "",
       "isDifficultSite": true,
-      "selectionProblem": "楼面站选址",
+      "selectionProblem": "华霆动力不同意建设，他们合同到27年底结束",
       "selectionProblemStatus": "未解决",
       "selectionIssueType": "疑难站址",
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": true,
-      "currentSituation": "新建站总表：选址未完成，问题站点；备注：楼面站选址",
+      "currentSituation": "华霆动力不同意建设，他们合同到27年底结束",
       "currentStage": "选址",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -3387,9 +3387,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": true,
-      "currentSituation": "新建站总表：选址未完成，问题站点；备注：楼面站选址",
+      "currentSituation": "已沟通物业，物业要和总部汇报情况，未同意建设，仍在沟通中",
       "currentStage": "选址",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -3413,7 +3413,8 @@
           "text": "以《2026年新建选址(2)》作为当前新建站总底册；施工实际进度、立项日期及48天工期以人工确认信息为准。"
         }
       ],
-      "selectionProgress": "楼面站选址"
+      "selectionProgress": "已沟通物业，物业要和总部汇报情况，未同意建设，仍在沟通中",
+      "selectionProgressUpdatedAt": "2026-09-17"
     },
     {
       "id": "design-2026-056",
@@ -3444,9 +3445,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": true,
-      "currentSituation": "新建站总表：选址未完成，上会之后居民不同意；备注：楼面站选址",
+      "currentSituation": "公示附近居民全体反对，商业楼选址太矮，网优未同意",
       "currentStage": "选址",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -3470,7 +3471,8 @@
           "text": "以《2026年新建选址(2)》作为当前新建站总底册；施工实际进度、立项日期及48天工期以人工确认信息为准。"
         }
       ],
-      "selectionProgress": "楼面站选址，上会后居民不同意"
+      "selectionProgress": "公示附近居民全体反对，商业楼选址太矮，网优未同意",
+      "selectionProgressUpdatedAt": "2026-09-21"
     },
     {
       "id": "design-2026-057",
@@ -3566,9 +3568,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": true,
-      "currentSituation": "新建站总表：选址未完成，问题站点；备注：楼面站选址",
+      "currentSituation": "道路过窄，楼面站选址，商业楼过矮",
       "currentStage": "选址",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -3592,7 +3594,8 @@
           "text": "以《2026年新建选址(2)》作为当前新建站总底册；施工实际进度、立项日期及48天工期以人工确认信息为准。"
         }
       ],
-      "selectionProgress": "楼面站选址"
+      "selectionProgress": "道路过窄，楼面站选址，商业楼过矮",
+      "selectionProgressUpdatedAt": "2026-09-17"
     },
     {
       "id": "design-2026-059",
@@ -3623,9 +3626,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": true,
-      "currentSituation": "新建站总表：选址未完成，问题站点；备注：楼面站选址",
+      "currentSituation": "上派镇卫生院楼顶选址，医院产权移交中，暂无法答复建站，附近地面站无位置建设",
       "currentStage": "选址",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -3649,7 +3652,8 @@
           "text": "以《2026年新建选址(2)》作为当前新建站总底册；施工实际进度、立项日期及48天工期以人工确认信息为准。"
         }
       ],
-      "selectionProgress": "楼面站选址"
+      "selectionProgress": "上派镇卫生院楼顶选址，医院产权移交中，暂无法答复建站，附近地面站无位置建设",
+      "selectionProgressUpdatedAt": "2026-09-17"
     },
     {
       "id": "design-2026-061",
@@ -3680,9 +3684,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": true,
-      "currentSituation": "新建站总表：选址未完成，问题站点；备注：需报规划，暂缓，有投诉，高速时代御府四期中间",
+      "currentSituation": "需报规划，不建议建设，高速时代御府四期中间，高速时代御府因肥西灯塔路与青龙潭路交口东南这个新建站投诉很严重",
       "currentStage": "选址",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -3706,7 +3710,8 @@
           "text": "以《2026年新建选址(2)》作为当前新建站总底册；施工实际进度、立项日期及48天工期以人工确认信息为准。"
         }
       ],
-      "selectionProgress": "需报规划，暂缓，有投诉；高速时代御府四期中间"
+      "selectionProgress": "需报规划，不建议建设，高速时代御府四期中间，高速时代御府因肥西灯塔路与青龙潭路交口东南这个新建站投诉很严重",
+      "selectionProgressUpdatedAt": "2026-09-17"
     },
     {
       "id": "design-2026-062",
@@ -3807,9 +3812,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "监理反馈：观澜天下物业阻扰施工，正在协调。",
+      "currentSituation": "位置已重新确认，需要大开挖，协调农户拆绿化",
       "currentStage": "待浇筑",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "2026-08-27",
       "entryDate": "2026-08-30",
       "pourDate": "",
@@ -3846,7 +3851,7 @@
       "buildMethod": "新建（单塔）",
       "buildConfig": "新建35米仿生树+两单元机柜基础（单塔）",
       "constructionProblem": true,
-      "constructionProblemReason": "观澜天下物业阻扰施工，正在协调"
+      "constructionProblemReason": "位置已重新确认，需要大开挖，协调农户拆绿化"
     },
     {
       "id": "design-2026-065",
@@ -3937,9 +3942,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "监理反馈：计划2026-09-24进场、09-28浇筑、10-28装塔。",
+      "currentSituation": "已立项，计划9月24日进场",
       "currentStage": "待进场放线",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "2026-09-17",
       "entryDate": "",
       "pourDate": "",
@@ -4009,15 +4014,15 @@
       "selectionDone": true,
       "selectionDoneDate": "",
       "isDifficultSite": false,
-      "selectionProblem": "待地勘物探",
+      "selectionProblem": "规划已批复，镇上和社区担心居民投诉不同意建设",
       "selectionProblemStatus": "已解决",
       "selectionIssueType": "",
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "新建站总表：选址已完成，待协调立项；备注：待地勘物探",
+      "currentSituation": "规划已批复，镇上和社区担心居民投诉不同意建设",
       "currentStage": "待立项",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -4077,7 +4082,7 @@
       "followupEnabled": true,
       "currentSituation": "新建站总表：选址未完成，问题站点；备注：楼面小区无法协调",
       "currentStage": "选址",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -4100,7 +4105,8 @@
           "date": "2026-09-19",
           "text": "以《2026年新建选址(2)》作为当前新建站总底册；施工实际进度、立项日期及48天工期以人工确认信息为准。"
         }
-      ]
+      ],
+      "selectionProblemUpdatedAt": "2026-09-17"
     },
     {
       "id": "design-2026-069",
@@ -4125,15 +4131,15 @@
       "selectionDone": true,
       "selectionDoneDate": "",
       "isDifficultSite": false,
-      "selectionProblem": "待地勘物探",
+      "selectionProblem": "正在沟通经开区绿化、城管落地",
       "selectionProblemStatus": "已解决",
       "selectionIssueType": "疑难站址",
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "新建站总表：选址已完成，待协调立项；备注：待地勘物探",
+      "currentSituation": "正在沟通经开区绿化、城管落地",
       "currentStage": "待立项",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -4325,9 +4331,9 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": true,
-      "currentSituation": "新建站总表：选址未完成，待沟通乡镇；备注：农村站选址",
+      "currentSituation": "已看现场，场租沟通中",
       "currentStage": "选址",
-      "lastUpdate": "2026-09-19",
+      "lastUpdate": "2026-09-21",
       "establishDate": "",
       "entryDate": "",
       "pourDate": "",
@@ -4351,7 +4357,8 @@
           "text": "以《2026年新建选址(2)》作为当前新建站总底册；施工实际进度、立项日期及48天工期以人工确认信息为准。"
         }
       ],
-      "selectionProgress": "农村站选址，待沟通乡镇"
+      "selectionProgress": "已看现场，场租沟通中",
+      "selectionProgressUpdatedAt": "2026-09-21"
     },
     {
       "id": "design-2026-073",
@@ -4633,5 +4640,6 @@
         }
       ]
     }
-  ]
+  ],
+  "verifiedScreenshotUpdateVersion": "20260921-v1"
 }

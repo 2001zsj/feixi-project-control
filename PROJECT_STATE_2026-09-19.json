@@ -1,14 +1,14 @@
 {
-  "snapshot_at": "2026-09-22T21:54:00+08:00",
-  "app_version": "V0.8.76",
+  "snapshot_at": "2026-09-22T21:59:00+08:00",
+  "app_version": "V0.8.77",
   "production_url": "https://feixi-project-control.vercel.app",
   "repository": "2001zsj/feixi-project-control",
   "total_stations": 76,
   "module_counts": {
     "normal_selection": 17,
     "difficult_selection": 11,
-    "pending_establishment": 8,
-    "construction": 13,
+    "pending_establishment": 9,
+    "construction": 12,
     "completed": 27
   },
   "stations": [
@@ -3806,7 +3806,7 @@
       "demandDate": "6月",
       "towerName": "肥西观澜天下南",
       "siteCode": "340123010010003689",
-      "establishRef": "26A08AHHF011004799",
+      "establishRef": "",
       "selectionDone": true,
       "selectionDoneDate": "",
       "isDifficultSite": false,
@@ -3816,11 +3816,11 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "监理反馈：观澜天下物业阻扰施工，正在协调。",
-      "currentStage": "待浇筑",
-      "lastUpdate": "2026-09-21",
-      "establishDate": "2026-08-27",
-      "entryDate": "2026-08-30",
+      "currentSituation": "位置已重新确认，需要大开挖，协调农户拆绿化",
+      "currentStage": "待立项",
+      "lastUpdate": "2026-09-22",
+      "establishDate": "",
+      "entryDate": "",
       "pourDate": "",
       "towerDate": "",
       "powerDate": "",
@@ -3848,14 +3848,31 @@
         {
           "date": "2026-09-19",
           "text": "根据立项通知确认实际立项日期为2026-08-27，项目编码26A08AHHF011004799。"
+        },
+        {
+          "date": "2026-09-22",
+          "text": "观澜天下原项目已销项，转待立项；当前：位置已重新确认，需要大开挖，协调农户拆绿化。"
         }
       ],
       "siteLng": 116.994441,
       "siteLat": 31.725235,
       "buildMethod": "新建（单塔）",
       "buildConfig": "新建35米仿生树+两单元机柜基础（单塔）",
-      "constructionProblem": true,
-      "constructionProblemReason": "观澜天下物业阻扰施工，正在协调"
+      "constructionProblem": false,
+      "constructionProblemReason": "",
+      "priorProjectHistory": [
+        {
+          "establishRef": "26A08AHHF011004799",
+          "establishDate": "2026-08-27",
+          "entryDate": "2026-08-30",
+          "pourDate": "",
+          "towerDate": "",
+          "powerDate": "",
+          "supportDate": "",
+          "closedDate": "2026-09-22"
+        }
+      ],
+      "pendingEstablishProgress": "位置已重新确认，需要大开挖，协调农户拆绿化"
     },
     {
       "id": "design-2026-065",
@@ -4711,5 +4728,6 @@
   "verifiedScreenshotUpdateVersion": "20260921-v1",
   "constructionScreenshotRevertVersion": "20260921-v1",
   "selectionHoldVersion": "20260921-v1",
-  "explicitConstructionUpdateVersion": "20260922-v1"
+  "explicitConstructionUpdateVersion": "20260922-v1",
+  "guanlanReestablishVersion": "20260922-v1"
 }

@@ -1,6 +1,6 @@
 {
-  "snapshot_at": "2026-09-21T23:51:00+08:00",
-  "app_version": "V0.8.75",
+  "snapshot_at": "2026-09-22T21:54:00+08:00",
+  "app_version": "V0.8.76",
   "production_url": "https://feixi-project-control.vercel.app",
   "repository": "2001zsj/feixi-project-control",
   "total_stations": 76,
@@ -2869,11 +2869,11 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "监理反馈：计划2026-09-24进场、09-30浇筑、10-30装塔及引电。",
-      "currentStage": "待进场放线",
-      "lastUpdate": "2026-09-19",
+      "currentSituation": "电信新建站点，完成桩基定位放线",
+      "currentStage": "待浇筑",
+      "lastUpdate": "2026-09-22",
       "establishDate": "2026-09-17",
-      "entryDate": "",
+      "entryDate": "2026-09-22",
       "pourDate": "",
       "towerDate": "",
       "powerDate": "",
@@ -2901,6 +2901,10 @@
         {
           "date": "2026-09-19",
           "text": "根据立项通知确认实际立项日期为2026-09-17，项目编码26A09AHHF011005231。"
+        },
+        {
+          "date": "2026-09-22",
+          "text": "用户确认：肥西聚星路与四合路交口北，电信新建站点，完成桩基定位放线。"
         }
       ],
       "siteLng": 117.16223,
@@ -4257,12 +4261,12 @@
       "selectionFollowups": [],
       "selectionLastFollowup": "",
       "followupEnabled": false,
-      "currentSituation": "监理反馈：已进场；计划2026-09-26浇筑，2026-10-26装塔、引电、配套。",
-      "currentStage": "待浇筑",
-      "lastUpdate": "2026-09-19",
+      "currentSituation": "电信回填站点（肥西-肥西蓬莱路与站前路交口南（回填站）-NR3.5G）桩基完成浇筑",
+      "currentStage": "养护中",
+      "lastUpdate": "2026-09-22",
       "establishDate": "2026-09-11",
       "entryDate": "2026-09-19",
-      "pourDate": "",
+      "pourDate": "2026-09-22",
       "towerDate": "",
       "powerDate": "",
       "supportDate": "",
@@ -4293,6 +4297,10 @@
         {
           "date": "2026-09-19",
           "text": "根据立项通知确认实际立项日期为2026-09-11。"
+        },
+        {
+          "date": "2026-09-22",
+          "text": "用户确认：肥西蓬莱路与站前路交口东南，电信回填站点桩基完成浇筑。"
         }
       ],
       "siteLng": 117.18736,
@@ -4702,5 +4710,6 @@
   ],
   "verifiedScreenshotUpdateVersion": "20260921-v1",
   "constructionScreenshotRevertVersion": "20260921-v1",
-  "selectionHoldVersion": "20260921-v1"
+  "selectionHoldVersion": "20260921-v1",
+  "explicitConstructionUpdateVersion": "20260922-v1"
 }

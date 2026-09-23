@@ -1,6 +1,6 @@
 {
-  "snapshot_at": "2026-09-22T21:59:00+08:00",
-  "app_version": "V0.8.77",
+  "snapshot_at": "2026-09-23T17:36:00+08:00",
+  "app_version": "V0.9.2",
   "production_url": "https://feixi-project-control.vercel.app",
   "repository": "2001zsj/feixi-project-control",
   "total_stations": 76,
@@ -4729,5 +4729,6 @@
   "constructionScreenshotRevertVersion": "20260921-v1",
   "selectionHoldVersion": "20260921-v1",
   "explicitConstructionUpdateVersion": "20260922-v1",
-  "guanlanReestablishVersion": "20260922-v1"
+  "guanlanReestablishVersion": "20260922-v1",
+  "selfMaintenanceVersion": "20260923-v1"
 }

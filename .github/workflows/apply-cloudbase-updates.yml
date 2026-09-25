@@ -1,0 +1,87 @@
+name: Apply CloudBase station updates
+
+on:
+  push:
+    branches:
+      - cloudbase-sync-v1
+    paths:
+      - 'cloudbase-dist/remote-updates.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 --no-save
+          npx playwright install --with-deps chromium
+
+      - name: Apply queued updates through CloudBase page
+        env:
+          CLOUDBASE_URL: https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+            page.on('console', msg => console.log('[browser]', msg.type(), msg.text()));
+            page.on('pageerror', err => console.log('[pageerror]', err.message));
+
+            await page.goto(process.env.CLOUDBASE_URL, {
+              waitUntil: 'domcontentloaded',
+              timeout: 120000
+            });
+
+            await page.waitForFunction(() => {
+              try {
+                return typeof cloudSync !== 'undefined' && (cloudSync.ready || cloudSync.lastError);
+              } catch (_) {
+                return false;
+              }
+            }, null, { timeout: 90000 });
+
+            const before = await page.evaluate(() => ({
+              ready: cloudSync.ready,
+              empty: cloudSync.empty,
+              conflict: cloudSync.conflict,
+              lastError: cloudSync.lastError || ''
+            }));
+            console.log('Cloud status before:', JSON.stringify(before));
+            if (!before.ready) {
+              throw new Error('CloudBase page is not ready: ' + JSON.stringify(before));
+            }
+
+            const result = await page.evaluate(async () => {
+              await cloudPollRemoteCommands();
+              await new Promise(r => setTimeout(r, 2500));
+              return {
+                ready: cloudSync.ready,
+                conflict: cloudSync.conflict,
+                lastError: cloudSync.lastError || '',
+                applied: Array.from(cloudSync.remoteAppliedCommands.entries())
+              };
+            });
+            console.log('Cloud update result:', JSON.stringify(result));
+            if (result.conflict) throw new Error('CloudBase conflict');
+            await browser.close();
+          })().catch(err => {
+            console.error(err);
+            process.exit(1);
+          });
+          NODE

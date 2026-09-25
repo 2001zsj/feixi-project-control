@@ -14,7 +14,7 @@ permissions:
 jobs:
   apply:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,21 +24,22 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Playwright
-        run: |
-          npm init -y >/dev/null 2>&1
-          npm install playwright@1.55.0 --no-save
-          npx playwright install --with-deps chromium
+      - name: Install browser driver
+        run: npm install puppeteer-core@24.19.0 --no-save
 
       - name: Apply queued updates through CloudBase page
         env:
           CLOUDBASE_URL: https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/
         run: |
           node <<'NODE'
-          const { chromium } = require('playwright');
+          const puppeteer = require('puppeteer-core');
 
           (async () => {
-            const browser = await chromium.launch({ headless: true });
+            const browser = await puppeteer.launch({
+              headless: true,
+              executablePath: '/usr/bin/google-chrome',
+              args: ['--no-sandbox', '--disable-dev-shm-usage']
+            });
             const page = await browser.newPage();
             page.on('console', msg => console.log('[browser]', msg.type(), msg.text()));
             page.on('pageerror', err => console.log('[pageerror]', err.message));
@@ -54,7 +55,7 @@ jobs:
               } catch (_) {
                 return false;
               }
-            }, null, { timeout: 90000 });
+            }, { timeout: 90000 });
 
             const before = await page.evaluate(() => ({
               ready: cloudSync.ready,
@@ -63,9 +64,7 @@ jobs:
               lastError: cloudSync.lastError || ''
             }));
             console.log('Cloud status before:', JSON.stringify(before));
-            if (!before.ready) {
-              throw new Error('CloudBase page is not ready: ' + JSON.stringify(before));
-            }
+            if (!before.ready) throw new Error('CloudBase page is not ready: ' + JSON.stringify(before));
 
             const result = await page.evaluate(async () => {
               await cloudPollRemoteCommands();

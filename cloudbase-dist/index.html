@@ -35,7 +35,7 @@ let state;
 const cloudSync={
   app:null,auth:null,db:null,ready:false,empty:false,connecting:false,conflict:false,
   syncing:false,pending:0,queue:Promise.resolve(),syncedState:null,metaRevision:0,
-  stationRevisions:new Map(),refreshTimer:null,lastError:''
+  stationRevisions:new Map(),remoteAppliedCommands:new Map(),refreshTimer:null,remoteTimer:null,lastError:''
 };
 function cloudStatus(kind,text){
   const el=document.getElementById('cloudStatus');if(!el)return;
@@ -56,7 +56,8 @@ function cloudStationBundle(src,id){
   if(!station)throw Error('云同步找不到固定站点：'+id);
   const undo=src.stationUndoHistory&&Array.isArray(src.stationUndoHistory[id])?src.stationUndoHistory[id]:[];
   const redo=src.stationRedoHistory&&Array.isArray(src.stationRedoHistory[id])?src.stationRedoHistory[id]:[];
-  return {station:clone(station),undo:clone(undo),redo:clone(redo)};
+  const applied=cloudSync&&cloudSync.remoteAppliedCommands&&cloudSync.remoteAppliedCommands.get(id);
+  return {station:clone(station),undo:clone(undo),redo:clone(redo),appliedRemoteCommands:Array.isArray(applied)?clone(applied):[]};
 }
 function cloudSame(a,b){return JSON.stringify(a)===JSON.stringify(b)}
 function cloudJson(v){
@@ -130,6 +131,7 @@ async function cloudReadAll(){
     next.stations.push(clone(bundle.station));
     if(Array.isArray(bundle.undo)&&bundle.undo.length)next.stationUndoHistory[seed.id]=clone(bundle.undo);
     if(Array.isArray(bundle.redo)&&bundle.redo.length)next.stationRedoHistory[seed.id]=clone(bundle.redo);
+    cloudSync.remoteAppliedCommands.set(seed.id,Array.isArray(bundle.appliedRemoteCommands)?clone(bundle.appliedRemoteCommands):[]);
     cloudSync.stationRevisions.set(seed.id,Number(row.revision||0));
   }
   cloudSync.metaRevision=Number(metaRow.revision||0);
@@ -239,6 +241,7 @@ async function cloudRefresh(){
       state.stationUndoHistory=state.stationUndoHistory||{};state.stationRedoHistory=state.stationRedoHistory||{};
       if(Array.isArray(bundle.undo)&&bundle.undo.length)state.stationUndoHistory[id]=clone(bundle.undo);else delete state.stationUndoHistory[id];
       if(Array.isArray(bundle.redo)&&bundle.redo.length)state.stationRedoHistory[id]=clone(bundle.redo);else delete state.stationRedoHistory[id];
+      cloudSync.remoteAppliedCommands.set(id,Array.isArray(bundle.appliedRemoteCommands)?clone(bundle.appliedRemoteCommands):[]);
       cloudSync.stationRevisions.set(id,Number(row.revision||0));touched=true;
     }
     const metaRes=cloudThrowIfError(await cloudSync.db.from(CLOUD_META_TABLE).select('id,data,revision').eq('id',CLOUD_META_ID).limit(1),'检查云端元数据失败');
@@ -275,7 +278,98 @@ async function cloudInitializeFromBackup(data,exportedAt){
   cloudApplyRemote(remote);
   cloudSync.ready=true;cloudSync.empty=false;cloudSync.conflict=false;cloudInitButton(false);
   cloudStatus('ok','云端已同步');render();toast('76站云端底册初始化完成');
+  if(!cloudSync.remoteTimer)cloudSync.remoteTimer=setInterval(cloudPollRemoteCommands,CLOUD_REMOTE_COMMANDS_POLL_MS);
+  setTimeout(cloudPollRemoteCommands,1200);
 }
+
+const CLOUD_REMOTE_COMMANDS_URL='./remote-updates.json';
+const CLOUD_REMOTE_COMMANDS_POLL_MS=60000;
+function cloudFieldGet(obj,path){
+  return String(path||'').split('.').reduce((v,k)=>v==null?undefined:v[k],obj);
+}
+function cloudFieldSet(obj,path,value){
+  const parts=String(path||'').split('.');let cur=obj;
+  for(let i=0;i<parts.length-1;i++){const k=parts[i];if(!cur[k]||typeof cur[k]!=='object')cur[k]={};cur=cur[k]}
+  cur[parts[parts.length-1]]=clone(value);
+}
+function cloudExpectedMatches(station,expected){
+  if(!expected||typeof expected!=='object')return true;
+  return Object.entries(expected).every(([k,v])=>cloudSame(cloudFieldGet(station,k),v));
+}
+async function cloudApplyRemoteCommand(cmd){
+  if(!cmd||!cmd.id||!cmd.stationId||!cmd.patch||typeof cmd.patch!=='object')return false;
+  const id=String(cmd.stationId);
+  if(!SEED.stations.some(s=>s.id===id))throw Error('远程更新站点ID不存在：'+id);
+  const rowRes=cloudThrowIfError(await cloudSync.db.from(CLOUD_STATIONS_TABLE).select('id,data,revision').eq('id',id).limit(1),'读取远程更新站点失败');
+  const row=rowRes.data&&rowRes.data[0];if(!row)throw Error('远程更新找不到站点：'+id);
+  const bundle=cloudJson(row.data),applied=Array.isArray(bundle.appliedRemoteCommands)?bundle.appliedRemoteCommands:[];
+  if(applied.includes(cmd.id)){
+    cloudSync.remoteAppliedCommands.set(id,clone(applied));
+    cloudSync.stationRevisions.set(id,Number(row.revision||0));
+    return false;
+  }
+  const station=bundle.station;if(!station)throw Error('远程更新站点数据异常：'+id);
+  if(!cloudExpectedMatches(station,cmd.expected)){
+    cloudSync.lastError='远程更新前置条件不满足：'+id+' / '+cmd.id;
+    return false;
+  }
+  const before=clone(station);
+  for(const [path,value] of Object.entries(cmd.patch))cloudFieldSet(station,path,value);
+  if(cmd.note){
+    if(!Array.isArray(station.updates))station.updates=[];
+    if(!station.updates.some(x=>x&&x.remoteCommandId===cmd.id)){
+      station.updates.push({date:String(cmd.date||''),text:String(cmd.note),remoteCommandId:String(cmd.id)});
+    }
+  }
+  const undo=Array.isArray(bundle.undo)?bundle.undo:[];
+  undo.push({at:editTimeNow(),label:String(cmd.label||'自动同步施工进度'),snapshot:before});
+  if(undo.length>STATION_HISTORY_LIMIT)undo.splice(0,undo.length-STATION_HISTORY_LIMIT);
+  bundle.station=station;bundle.undo=undo;bundle.redo=[];
+  bundle.appliedRemoteCommands=applied.concat(String(cmd.id)).slice(-100);
+  const rev=Number(row.revision||0);
+  const wr=cloudThrowIfError(await cloudSync.db.from(CLOUD_STATIONS_TABLE)
+    .update({data:bundle,revision:rev+1,updated_at:new Date().toISOString()},{count:'exact'})
+    .eq('id',id).eq('revision',rev),'执行远程更新失败');
+  if(typeof wr.count==='number'&&wr.count!==1){
+    const err=Error('远程更新遇到站点并发修改：'+id);err.code='CLOUD_CONFLICT';throw err;
+  }
+  const verify=cloudThrowIfError(await cloudSync.db.from(CLOUD_STATIONS_TABLE).select('data,revision').eq('id',id).limit(1),'校验远程更新失败');
+  const saved=verify.data&&verify.data[0],savedBundle=cloudJson(saved&&saved.data);
+  if(!saved||Number(saved.revision)!==rev+1||!Array.isArray(savedBundle.appliedRemoteCommands)||!savedBundle.appliedRemoteCommands.includes(cmd.id)){
+    throw Error('远程更新写入后校验失败：'+id);
+  }
+  cloudSync.remoteAppliedCommands.set(id,clone(savedBundle.appliedRemoteCommands));
+  cloudSync.stationRevisions.set(id,rev+1);
+  const idx=state.stations.findIndex(s=>s.id===id);
+  if(idx>=0){
+    state.stations[idx]=clone(savedBundle.station);
+    state.stationUndoHistory=state.stationUndoHistory||{};state.stationRedoHistory=state.stationRedoHistory||{};
+    if(Array.isArray(savedBundle.undo)&&savedBundle.undo.length)state.stationUndoHistory[id]=clone(savedBundle.undo);else delete state.stationUndoHistory[id];
+    delete state.stationRedoHistory[id];
+    saveLocalOnly();cloudSync.syncedState=clone(state);
+  }
+  return true;
+}
+async function cloudPollRemoteCommands(){
+  if(!cloudSync.ready||cloudSync.conflict||cloudSync.pending||cloudSync.syncing)return;
+  try{
+    const res=await fetch(CLOUD_REMOTE_COMMANDS_URL+'?v='+Date.now(),{cache:'no-store'});
+    if(!res.ok)return;
+    const payload=await res.json();
+    if(!payload||payload.version!==1||!Array.isArray(payload.commands))return;
+    let appliedCount=0;
+    for(const cmd of payload.commands){
+      try{if(await cloudApplyRemoteCommand(cmd))appliedCount++}
+      catch(e){cloudSync.lastError=e&&e.message||String(e)}
+    }
+    if(appliedCount){
+      cloudSync.syncedState=clone(state);render();toast('已自动同步 '+appliedCount+' 条最新进度');
+    }
+  }catch(e){
+    cloudSync.lastError=e&&e.message||String(e);
+  }
+}
+
 function bindCloudTools(){
   const btn=document.getElementById('cloudInitData'),input=document.getElementById('cloudBackupFile');
   if(btn&&input)btn.onclick=()=>input.click();
@@ -308,7 +402,9 @@ async function startCloud(){
     cloudApplyRemote(remote);
     cloudSync.ready=true;cloudSync.empty=false;cloudInitButton(false);cloudStatus('ok','云端已同步');render();
     if(!cloudSync.refreshTimer)cloudSync.refreshTimer=setInterval(cloudRefresh,CLOUD_POLL_MS);
-    window.addEventListener('focus',cloudRefresh);
+    if(!cloudSync.remoteTimer)cloudSync.remoteTimer=setInterval(cloudPollRemoteCommands,CLOUD_REMOTE_COMMANDS_POLL_MS);
+    setTimeout(cloudPollRemoteCommands,1200);
+    window.addEventListener('focus',()=>{cloudRefresh();cloudPollRemoteCommands()});
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)cloudRefresh()});
   }catch(e){
     cloudSync.lastError=e&&e.message||String(e);

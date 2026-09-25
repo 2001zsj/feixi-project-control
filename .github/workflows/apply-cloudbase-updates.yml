@@ -29,7 +29,7 @@ jobs:
 
       - name: Apply queued updates through CloudBase page
         env:
-          CLOUDBASE_URL: https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/
+          CLOUDBASE_URLS: https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/fxtt/,https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/
         run: |
           node <<'NODE'
           const puppeteer = require('puppeteer-core');
@@ -44,10 +44,18 @@ jobs:
             page.on('console', msg => console.log('[browser]', msg.type(), msg.text()));
             page.on('pageerror', err => console.log('[pageerror]', err.message));
 
-            await page.goto(process.env.CLOUDBASE_URL, {
-              waitUntil: 'domcontentloaded',
-              timeout: 120000
-            });
+            const urls = String(process.env.CLOUDBASE_URLS || '').split(',').filter(Boolean);
+            let selected = null;
+            for (const url of urls) {
+              const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+              const title = await page.title();
+              const hasCloudSync = await page.evaluate(() => {
+                try { return typeof cloudSync !== 'undefined'; } catch (_) { return false; }
+              });
+              console.log('Probe:', JSON.stringify({url,status:resp && resp.status(),title,hasCloudSync}));
+              if (hasCloudSync) { selected = url; break; }
+            }
+            if (!selected) throw new Error('No deployed CloudBase app page found');
 
             await page.waitForFunction(() => {
               try {

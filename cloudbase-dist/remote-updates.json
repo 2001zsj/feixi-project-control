@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-26T01:20:00+08:00",
+  "updatedAt": "2026-09-26T01:30:00+08:00",
   "commands": [
     {
       "id": "20260926-design-2026-047-pour-20260923",
@@ -34,6 +34,51 @@
         "lastUpdate": "2026-09-24"
       },
       "note": "监理反馈：2026-09-24完成桩基定位放线。"
+    },
+    {
+      "id": "20260926-design-2026-022-move-to-pending",
+      "stationId": "design-2026-022",
+      "label": "用户确认：珠光紫蓬产业园转待立项",
+      "date": "2026-09-26",
+      "expected": {
+        "establishRef": "26A09AHHF011005046",
+        "selectionDone": true
+      },
+      "patch": {
+        "establishRef": "",
+        "establishDate": "",
+        "entryDate": "",
+        "pourDate": "",
+        "towerDate": "",
+        "powerDate": "",
+        "supportDate": "",
+        "completeDate": "",
+        "currentStage": "待立项",
+        "currentSituation": "原项目已销项，转待立项，等待重新立项。",
+        "selectionProblem": "待重新立项",
+        "selectionProblemStatus": "已解决",
+        "constructionProblem": false,
+        "constructionProblemReason": "",
+        "isPaused": false,
+        "pauseStart": "",
+        "pauseReason": "",
+        "priorProjectHistory": [
+          {
+            "establishRef": "26A09AHHF011005046",
+            "establishDate": "",
+            "entryDate": "",
+            "pourDate": "",
+            "towerDate": "",
+            "powerDate": "",
+            "supportDate": "",
+            "completeDate": "",
+            "closedDate": "2026-09-26",
+            "closeRemark": "用户确认：珠光紫蓬产业园转待立项。"
+          }
+        ],
+        "lastUpdate": "2026-09-26"
+      },
+      "note": "用户确认：珠光紫蓬产业园原项目转待立项，原项目编码26A09AHHF011005046归入历史项目，等待重新立项。"
     }
   ]
 }

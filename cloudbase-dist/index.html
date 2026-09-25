@@ -34,7 +34,7 @@ let state;
 const cloudSync={
   app:null,auth:null,db:null,ready:false,empty:false,connecting:false,conflict:false,
   syncing:false,pending:0,queue:Promise.resolve(),syncedState:null,metaRevision:0,
-  stationRevisions:new Map(),refreshTimer:null,lastError:''
+  stationRevisions:new Map(),changeSeq:0,refreshTimer:null,lastError:''
 };
 function cloudStatus(kind,text){
   const el=document.getElementById('cloudStatus');if(!el)return;
@@ -101,10 +101,14 @@ async function cloudReadAll(){
     cloudSync.stationRevisions.set(seed.id,Number(d.revision||0));
   }
   cloudSync.metaRevision=Number(metaDoc.revision||0);
+  cloudSync.changeSeq=Number(metaDoc.changeSeq||0);
   return cloudValidateState(next);
 }
 function cloudApplyRemote(next){
   const old=state;
+  try{
+    if(old&&!cloudSame(old,next))localStorage.setItem(KEY+':before-cloud-load:'+Date.now(),JSON.stringify(old));
+  }catch(e){}
   state=clone(next);
   try{saveLocalOnly()}catch(e){state=old;throw e}
   cloudSync.syncedState=clone(state);
@@ -119,6 +123,7 @@ async function cloudPushSnapshot(snapshot){
   if(!cloudSync.ready||cloudSync.conflict)return;
   const db=cloudSync.db,_=db.command;
   const synced=cloudSync.syncedState||clone(snapshot);
+  let stationChanged=false;
   for(const seed of SEED.stations){
     const id=seed.id,nowBundle=cloudStationBundle(snapshot,id),oldBundle=cloudStationBundle(synced,id);
     if(cloudSame(nowBundle,oldBundle))continue;
@@ -131,13 +136,20 @@ async function cloudPushSnapshot(snapshot){
     if(Number(result.updated||0)!==1){
       const err=Error('同一站点已被其他人更新：'+id);err.code='CLOUD_CONFLICT';throw err;
     }
-    cloudSync.stationRevisions.set(id,rev+1);
+    cloudSync.stationRevisions.set(id,rev+1);stationChanged=true;
     const idx=cloudSync.syncedState.stations.findIndex(x=>x.id===id);
     cloudSync.syncedState.stations[idx]=clone(nowBundle.station);
     cloudSync.syncedState.stationUndoHistory=cloudSync.syncedState.stationUndoHistory||{};
     cloudSync.syncedState.stationRedoHistory=cloudSync.syncedState.stationRedoHistory||{};
     if(nowBundle.undo.length)cloudSync.syncedState.stationUndoHistory[id]=clone(nowBundle.undo);else delete cloudSync.syncedState.stationUndoHistory[id];
     if(nowBundle.redo.length)cloudSync.syncedState.stationRedoHistory[id]=clone(nowBundle.redo);else delete cloudSync.syncedState.stationRedoHistory[id];
+  }
+  if(stationChanged){
+    const bump=await db.collection(CLOUD_META_COLLECTION).doc(CLOUD_META_ID).update({
+      changeSeq:_.inc(1),updatedAt:new Date().toISOString()
+    });
+    if(bump&&bump.code)throw Error(bump.message||bump.code);
+    cloudSync.changeSeq+=1;
   }
   const nowMeta=cloudStateMeta(snapshot),oldMeta=cloudStateMeta(cloudSync.syncedState);
   if(!cloudSame(nowMeta,oldMeta)){
@@ -174,29 +186,34 @@ async function cloudRefresh(){
   if(!cloudSync.ready||cloudSync.conflict||cloudSync.pending||cloudSync.syncing)return;
   if(typeof route==='function'&&route().page==='station')return;
   try{
-    const revRes=await cloudSync.db.collection(CLOUD_STATIONS_COLLECTION).field({revision:true}).limit(100).get();
-    const changed=[];
-    for(const d of revRes.data||[]){
-      const id=String(d._id),remoteRev=Number(d.revision||0),localRev=cloudSync.stationRevisions.get(id);
-      if(localRev&&remoteRev>localRev)changed.push(id);
-    }
-    let touched=false;
-    for(const id of changed){
-      const r=await cloudSync.db.collection(CLOUD_STATIONS_COLLECTION).doc(id).get();
-      const d=r.data&&r.data[0];if(!d||!d.station)continue;
-      const idx=state.stations.findIndex(x=>x.id===id);if(idx<0)continue;
-      state.stations[idx]=clone(d.station);
-      state.stationUndoHistory=state.stationUndoHistory||{};state.stationRedoHistory=state.stationRedoHistory||{};
-      if(Array.isArray(d.undo)&&d.undo.length)state.stationUndoHistory[id]=clone(d.undo);else delete state.stationUndoHistory[id];
-      if(Array.isArray(d.redo)&&d.redo.length)state.stationRedoHistory[id]=clone(d.redo);else delete state.stationRedoHistory[id];
-      cloudSync.stationRevisions.set(id,Number(d.revision||0));touched=true;
-    }
     const metaRes=await cloudSync.db.collection(CLOUD_META_COLLECTION).doc(CLOUD_META_ID).get();
     const md=metaRes.data&&metaRes.data[0];
-    if(md&&Number(md.revision||0)>cloudSync.metaRevision){
+    if(!md)return;
+    const remoteSeq=Number(md.changeSeq||0),remoteMetaRev=Number(md.revision||0);
+    let touched=false;
+    if(remoteSeq>cloudSync.changeSeq){
+      const revRes=await cloudSync.db.collection(CLOUD_STATIONS_COLLECTION).field({revision:true}).limit(100).get();
+      const changed=[];
+      for(const d of revRes.data||[]){
+        const id=String(d._id),remoteRev=Number(d.revision||0),localRev=cloudSync.stationRevisions.get(id);
+        if(localRev&&remoteRev>localRev)changed.push(id);
+      }
+      for(const id of changed){
+        const r=await cloudSync.db.collection(CLOUD_STATIONS_COLLECTION).doc(id).get();
+        const d=r.data&&r.data[0];if(!d||!d.station)continue;
+        const idx=state.stations.findIndex(x=>x.id===id);if(idx<0)continue;
+        state.stations[idx]=clone(d.station);
+        state.stationUndoHistory=state.stationUndoHistory||{};state.stationRedoHistory=state.stationRedoHistory||{};
+        if(Array.isArray(d.undo)&&d.undo.length)state.stationUndoHistory[id]=clone(d.undo);else delete state.stationUndoHistory[id];
+        if(Array.isArray(d.redo)&&d.redo.length)state.stationRedoHistory[id]=clone(d.redo);else delete state.stationRedoHistory[id];
+        cloudSync.stationRevisions.set(id,Number(d.revision||0));touched=true;
+      }
+      cloudSync.changeSeq=remoteSeq;
+    }
+    if(remoteMetaRev>cloudSync.metaRevision){
       const stations=state.stations,undo=state.stationUndoHistory||{},redo=state.stationRedoHistory||{};
       state={...clone(md.meta||{}),stations,stationUndoHistory:undo,stationRedoHistory:redo};
-      cloudSync.metaRevision=Number(md.revision||0);touched=true;
+      cloudSync.metaRevision=remoteMetaRev;touched=true;
     }
     if(touched){
       cloudValidateState(state);saveLocalOnly();cloudSync.syncedState=clone(state);render();toast('已获取其他人的最新修改');
@@ -220,7 +237,7 @@ async function cloudInitializeFromBackup(data,exportedAt){
     });
   }
   await cloudSync.db.collection(CLOUD_META_COLLECTION).doc(CLOUD_META_ID).set({
-    schemaVersion:CLOUD_SCHEMA_VERSION,stationCount:SEED.stations.length,revision:1,
+    schemaVersion:CLOUD_SCHEMA_VERSION,stationCount:SEED.stations.length,revision:1,changeSeq:1,
     meta:cloudStateMeta(data),initializedAt:now,sourceExportedAt:String(exportedAt||'')
   });
   const remote=await cloudReadAll();

@@ -1,0 +1,12 @@
+{
+  "version": "2.0",
+  "envId": "zsj1314-d9ger6ak4a25a8717",
+  "app": {
+    "serviceName": "feixi-project-control",
+    "framework": "static",
+    "installCommand": "",
+    "buildCommand": "",
+    "outputDir": "cloudbase-dist",
+    "deployPath": "/"
+  }
+}

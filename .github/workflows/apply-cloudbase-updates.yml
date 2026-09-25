@@ -24,70 +24,138 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install browser driver
-        run: npm install puppeteer-core@24.19.0 --no-save
-
-      - name: Apply queued updates through CloudBase page
+      - name: Apply queued updates directly to CloudBase PostgreSQL
         env:
-          CLOUDBASE_URLS: https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/fxtt/,https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/
+          CLOUDBASE_ENV_ID: zsj1314-d9ger6ak4a25a8717
         run: |
           node <<'NODE'
-          const puppeteer = require('puppeteer-core');
+          const fs = require('fs');
 
-          (async () => {
-            const browser = await puppeteer.launch({
-              headless: true,
-              executablePath: '/usr/bin/google-chrome',
-              args: ['--no-sandbox', '--disable-dev-shm-usage']
-            });
-            const page = await browser.newPage();
-            page.on('console', msg => console.log('[browser]', msg.type(), msg.text()));
-            page.on('pageerror', err => console.log('[pageerror]', err.message));
+          const envId = process.env.CLOUDBASE_ENV_ID;
+          const gateway = `https://${envId}.api.tcloudbasegateway.com`;
+          const queue = JSON.parse(fs.readFileSync('cloudbase-dist/remote-updates.json','utf8'));
 
-            const urls = String(process.env.CLOUDBASE_URLS || '').split(',').filter(Boolean);
-            let selected = null;
-            for (const url of urls) {
-              const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-              const title = await page.title();
-              const hasCloudSync = await page.evaluate(() => {
-                try { return typeof cloudSync !== 'undefined'; } catch (_) { return false; }
-              });
-              console.log('Probe:', JSON.stringify({url,status:resp && resp.status(),title,hasCloudSync}));
-              if (hasCloudSync) { selected = url; break; }
+          function clone(v){ return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); }
+          function same(a,b){ return JSON.stringify(a) === JSON.stringify(b); }
+          function getPath(obj,path){
+            return String(path||'').split('.').reduce((v,k)=>v==null?undefined:v[k],obj);
+          }
+          function setPath(obj,path,value){
+            const parts=String(path||'').split('.');
+            let cur=obj;
+            for(let i=0;i<parts.length-1;i++){
+              const k=parts[i];
+              if(!cur[k] || typeof cur[k] !== 'object') cur[k]={};
+              cur=cur[k];
             }
-            if (!selected) throw new Error('No deployed CloudBase app page found');
+            cur[parts[parts.length-1]]=clone(value);
+          }
+          function expectedMatches(station,expected){
+            if(!expected || typeof expected !== 'object') return true;
+            return Object.entries(expected).every(([k,v])=>same(getPath(station,k),v));
+          }
+          function editTimeNow(){
+            const d=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Shanghai'}));
+            return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+          }
+          async function req(url,opts={}){
+            const r=await fetch(url,opts);
+            const text=await r.text();
+            let data=null;
+            try{data=text?JSON.parse(text):null}catch{data=text}
+            if(!r.ok){
+              throw new Error(`${opts.method||'GET'} ${url} -> ${r.status}: ${typeof data==='string'?data:JSON.stringify(data)}`);
+            }
+            return data;
+          }
 
-            await page.waitForFunction(() => {
-              try {
-                return typeof cloudSync !== 'undefined' && (cloudSync.ready || cloudSync.lastError);
-              } catch (_) {
-                return false;
-              }
-            }, { timeout: 90000 });
+          (async()=>{
+            if(!queue || queue.version!==1 || !Array.isArray(queue.commands)) throw new Error('Invalid remote-updates.json');
 
-            const before = await page.evaluate(() => ({
-              ready: cloudSync.ready,
-              empty: cloudSync.empty,
-              conflict: cloudSync.conflict,
-              lastError: cloudSync.lastError || ''
-            }));
-            console.log('Cloud status before:', JSON.stringify(before));
-            if (!before.ready) throw new Error('CloudBase page is not ready: ' + JSON.stringify(before));
-
-            const result = await page.evaluate(async () => {
-              await cloudPollRemoteCommands();
-              await new Promise(r => setTimeout(r, 2500));
-              return {
-                ready: cloudSync.ready,
-                conflict: cloudSync.conflict,
-                lastError: cloudSync.lastError || '',
-                applied: Array.from(cloudSync.remoteAppliedCommands.entries())
-              };
+            const auth=await req(`${gateway}/auth/v1/signin/anonymously`,{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:'{}'
             });
-            console.log('Cloud update result:', JSON.stringify(result));
-            if (result.conflict) throw new Error('CloudBase conflict');
-            await browser.close();
-          })().catch(err => {
+            const token=auth && (auth.access_token || auth.accessToken || (auth.data&&auth.data.access_token));
+            if(!token) throw new Error('Anonymous sign-in succeeded but no access_token returned');
+            console.log('Anonymous CloudBase session established');
+
+            const headers={
+              'Authorization':`Bearer ${token}`,
+              'Content-Type':'application/json'
+            };
+
+            let applied=0,skipped=0,blocked=0;
+            for(const cmd of queue.commands){
+              if(!cmd || !cmd.id || !cmd.stationId || !cmd.patch) continue;
+              const id=String(cmd.stationId);
+              const q=new URLSearchParams({select:'id,data,revision',id:`eq.${id}`});
+              const rows=await req(`${gateway}/v1/rdb/rest/feixi_stations?${q.toString()}`,{headers});
+              if(!Array.isArray(rows) || !rows.length) throw new Error('Station not found: '+id);
+              const row=rows[0];
+              const bundle=typeof row.data==='string'?JSON.parse(row.data):clone(row.data||{});
+              const station=bundle.station;
+              if(!station) throw new Error('Station bundle invalid: '+id);
+
+              const done=Array.isArray(bundle.appliedRemoteCommands)?bundle.appliedRemoteCommands:[];
+              if(done.includes(cmd.id)){
+                console.log('SKIP already applied:',cmd.id);
+                skipped++;
+                continue;
+              }
+              if(!expectedMatches(station,cmd.expected)){
+                console.log('BLOCK expected mismatch:',cmd.id);
+                blocked++;
+                continue;
+              }
+
+              const before=clone(station);
+              for(const [path,value] of Object.entries(cmd.patch)){
+                if(path==='priorProjectHistory' && Array.isArray(value)){
+                  const existing=Array.isArray(station.priorProjectHistory)?station.priorProjectHistory:[];
+                  const merged=existing.concat(clone(value));
+                  const seen=new Set();
+                  station.priorProjectHistory=merged.filter(x=>{
+                    const key=JSON.stringify([x&&x.establishRef||'',x&&x.closedDate||'',x&&x.closeRemark||'']);
+                    if(seen.has(key)) return false; seen.add(key); return true;
+                  });
+                }else{
+                  setPath(station,path,value);
+                }
+              }
+
+              if(cmd.note){
+                if(!Array.isArray(station.updates)) station.updates=[];
+                if(!station.updates.some(x=>x&&x.remoteCommandId===cmd.id)){
+                  station.updates.push({date:String(cmd.date||''),text:String(cmd.note),remoteCommandId:String(cmd.id)});
+                }
+              }
+
+              const undo=Array.isArray(bundle.undo)?bundle.undo:[];
+              undo.push({at:editTimeNow(),label:String(cmd.label||'自动同步施工进度'),snapshot:before});
+              if(undo.length>8) undo.splice(0,undo.length-8);
+
+              bundle.station=station;
+              bundle.undo=undo;
+              bundle.redo=[];
+              bundle.appliedRemoteCommands=done.concat(String(cmd.id)).slice(-100);
+
+              const rev=Number(row.revision||0);
+              const filter=new URLSearchParams({id:`eq.${id}`,revision:`eq.${rev}`});
+              const updated=await req(`${gateway}/v1/rdb/rest/feixi_stations?${filter.toString()}`,{
+                method:'PATCH',
+                headers:{...headers,'Prefer':'return=representation'},
+                body:JSON.stringify({data:bundle,revision:rev+1,updated_at:new Date().toISOString()})
+              });
+              if(!Array.isArray(updated) || updated.length!==1) throw new Error('Revision conflict: '+id);
+              console.log('APPLIED:',cmd.id,'revision',rev,'->',rev+1);
+              applied++;
+            }
+
+            console.log(JSON.stringify({applied,skipped,blocked,total:queue.commands.length}));
+            if(blocked) process.exitCode=2;
+          })().catch(err=>{
             console.error(err);
             process.exit(1);
           });

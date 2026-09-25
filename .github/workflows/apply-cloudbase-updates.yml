@@ -74,7 +74,7 @@ jobs:
 
             const auth=await req(`${gateway}/auth/v1/signin/anonymously`,{
               method:'POST',
-              headers:{'Content-Type':'application/json'},
+              headers:{'Content-Type':'application/json','x-device-id':'feixi-github-actions-sync-v1'},
               body:'{}'
             });
             const token=auth && (auth.access_token || auth.accessToken || (auth.data&&auth.data.access_token));

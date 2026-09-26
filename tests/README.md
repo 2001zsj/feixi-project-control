@@ -1,5 +1,17 @@
 # 审计回归
 
+## CloudBase 共享版（2026-09-26 起）
+
+- `node tests/cloudbase-sync.cjs`：直接执行 `cloudbase-dist/index.html` 的真实同步代码，在隔离 adapter 中验证失败保护、刷新竞态、恢复和 CAS 冲突。无需凭据，不连接生产库。GitHub Actions 同步执行。
+- `node tools/freeze-cloudbase.cjs`：只读采集共享库完整快照、二次读取及 SHA-256，业务数据仅放在被忽略的 `audit-evidence/`。
+- `node tests/cloudbase-baseline.cjs <snapshot.json>`：76 站及 2026-09-26 关键事实验收；固定参考日期/数量仅用于此基线，不得作为未来生产数量约束。
+- `node tools/serve-cloudbase-test.cjs <snapshot.json>`：127.0.0.1:8767 隔离页面，全部读写到内存 fixture，不连接 CloudBase。
+- `tests/cloudbase-sync-observation.cjs <pre-fix.html>` 仅复现旧版缺陷；成功复现不代表产品通过，不进入现版回归套件。
+
+下面的旧版套件默认测试根目录旧 `index.html`，不能替代共享版验收。
+
+## 历史根目录页面
+
 在仓库根目录使用 PowerShell：
 
 ```powershell

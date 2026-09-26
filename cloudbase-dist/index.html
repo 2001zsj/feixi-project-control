@@ -16,7 +16,7 @@
 @media(max-width:400px){.editgrid{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head><body>
-<div class="top"><div class="brand">肥西站点推进</div><span id="cloudStatus" class="tag">本机</span><button class="btn" id="cloudRefreshNow" title="立即从云端读取最新数据">↻</button><button class="btn" id="cloudInitData" style="display:none">导入云端底册</button><div class="nav"><button data-page="home">工作台</button><button data-page="selection">选址中</button><button data-page="difficult">疑难站址</button><button data-page="pending">待立项</button><button data-page="building">施工中</button><button data-page="complete">完工站</button><button data-page="calendar">大陆日历</button></div><form class="search" id="searchForm"><input id="globalSearch" placeholder="搜索站名 / 铁塔站名 / 订单号 / 项目编码 / 站址编码 / 归属地"><button class="btn">搜索</button></form></div>
+<div class="top"><div class="brand">肥西站点推进</div><span id="cloudStatus" class="tag">本机</span><button class="btn" id="cloudRefreshNow" title="立即从云端读取最新数据">↻</button><button class="btn" id="cloudRetrySync" style="display:none">重试同步</button><button class="btn" id="cloudInitData" style="display:none">导入云端底册</button><div class="nav"><button data-page="home">工作台</button><button data-page="selection">选址中</button><button data-page="difficult">疑难站址</button><button data-page="pending">待立项</button><button data-page="building">施工中</button><button data-page="complete">完工站</button><button data-page="calendar">大陆日历</button></div><form class="search" id="searchForm"><input id="globalSearch" placeholder="搜索站名 / 铁塔站名 / 订单号 / 项目编码 / 站址编码 / 归属地"><button class="btn">搜索</button></form></div>
 <input type="file" id="backupFile" accept=".json,application/json" hidden><input type="file" id="cloudBackupFile" accept=".json,application/json" hidden><div id="restorePreview" class="wrap hide"></div>
 <div id="app" class="wrap"></div><div id="toast" class="toast"></div>
 <script src="https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js"></script>
@@ -30,11 +30,15 @@ const CLOUD_META_TABLE='feixi_meta';
 const CLOUD_META_ID='main';
 const CLOUD_SCHEMA_VERSION=2;
 const CLOUD_POLL_MS=15000;
+const CLOUD_RELEASE='2026-09-26-sync-protection-1';
+const CLOUD_OUTBOX_KEY='feixi-v072-state:cloud-outbox-v1';
 const CLOUD_INITIAL_COUNTS={selection:9,difficult:18,pending:10,building:12,complete:27};
 let state;
 const cloudSync={
   app:null,auth:null,db:null,ready:false,empty:false,connecting:false,conflict:false,
   syncing:false,pending:0,queue:Promise.resolve(),syncedState:null,metaRevision:0,
+  dirty:false,writeFailed:false,refreshing:false,editEpoch:0,recovery:null,outboxRaw:null,
+  writerId:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),
   stationRevisions:new Map(),remoteAppliedCommands:new Map(),refreshTimer:null,remoteTimer:null,lastError:''
 };
 function cloudStatus(kind,text){
@@ -42,6 +46,56 @@ function cloudStatus(kind,text){
   el.textContent=text;
   el.className='tag '+(kind==='ok'?'g':kind==='warn'?'o':kind==='bad'?'r':'b');
   el.title=cloudSync.lastError||'';
+  const retry=document.getElementById('cloudRetrySync');
+  if(retry)retry.style.display=cloudSync.writeFailed&&!cloudSync.conflict?'inline-flex':'none';
+}
+function cloudPersistOutbox(){
+  if(localStorage.getItem(CLOUD_OUTBOX_KEY)!==cloudSync.outboxRaw)throw Error('另一个页面已更新待同步备份，请先下载本机备份');
+  const raw=JSON.stringify({version:1,writerId:cloudSync.writerId,snapshot:clone(state),base:clone(cloudSync.syncedState),
+    revisions:Array.from(cloudSync.stationRevisions),metaRevision:cloudSync.metaRevision,
+    appliedCommands:Array.from(cloudSync.remoteAppliedCommands)});
+  localStorage.setItem(CLOUD_OUTBOX_KEY,raw);cloudSync.outboxRaw=raw;
+}
+function cloudClearOutbox(){
+  if(localStorage.getItem(CLOUD_OUTBOX_KEY)!==cloudSync.outboxRaw)throw Error('另一个页面已更新待同步备份，请先下载本机备份');
+  localStorage.removeItem(CLOUD_OUTBOX_KEY);cloudSync.outboxRaw=null;
+}
+function cloudProtectControls(){
+  const app=document.getElementById('app');if(!app)return;
+  for(const el of app.querySelectorAll('button,input,select,textarea')){
+    if(['backupData','exportBtn'].includes(el.id)||el.hasAttribute('data-go'))continue;
+    if(!cloudSync.ready||cloudSync.conflict){if(!el.disabled){el.disabled=true;el.dataset.cloudDisabled='1'}}
+    else if(el.dataset.cloudDisabled){el.disabled=false;delete el.dataset.cloudDisabled}
+  }
+}
+async function cloudRetrySync(){
+  if(!cloudSync.ready||cloudSync.conflict||cloudSync.pending||cloudSync.syncing)return;
+  cloudSync.writeFailed=false;cloudSync.lastError='';
+  queueCloudSync(clone(state));await cloudSync.queue;
+}
+function cloudResumeOutbox(remote){
+  const pending=cloudSync.recovery;
+  if(!pending)return remote;
+  const next=clone(remote),base=pending.base,local=pending.snapshot;
+  if(!base)throw Error('待同步修改缺少原云端版本，请先下载备份');
+  const originalRevisions=new Map(pending.revisions);
+  for(const s of local.stations){
+    const id=s.id;
+    const before=cloudStationBundle(base,id),after=cloudStationBundle(local,id),current=cloudStationBundle(remote,id);
+    if(cloudSame(before,after))continue;
+    if(cloudSync.stationRevisions.get(id)!==originalRevisions.get(id)&&!cloudSame(current,after)){
+      const e=Error('待同步站点已被其他人更新：'+id);e.code='CLOUD_CONFLICT';throw e;
+    }
+    next.stations[next.stations.findIndex(x=>x.id===id)]=clone(s);
+    next.stationUndoHistory[id]=clone(after.undo);next.stationRedoHistory[id]=clone(after.redo);
+  }
+  if(!cloudSame(cloudStateMeta(local),cloudStateMeta(base))){
+    if(cloudSync.metaRevision!==pending.metaRevision&&!cloudSame(cloudStateMeta(remote),cloudStateMeta(local))){
+      const e=Error('待同步全局数据已被其他人更新');e.code='CLOUD_CONFLICT';throw e;
+    }
+    return {...clone(cloudStateMeta(local)),stations:next.stations,stationUndoHistory:next.stationUndoHistory,stationRedoHistory:next.stationRedoHistory};
+  }
+  return next;
 }
 function cloudInitButton(show){
   const el=document.getElementById('cloudInitData');if(el)el.style.display=show?'inline-flex':'none';
@@ -150,6 +204,7 @@ function cloudConflictError(message,snapshot){
   cloudSync.conflict=true;cloudSync.ready=false;cloudSync.lastError=message||'云端数据冲突';
   try{localStorage.setItem(KEY+':cloud-conflict-backup:'+Date.now(),JSON.stringify(snapshot||state))}catch(e){}
   cloudStatus('bad','云端冲突');
+  cloudProtectControls();
   alert('云端数据已被其他人更新，本次修改已保留在本机，但没有覆盖云端。请先“下载完整备份”，再刷新页面获取最新云端数据。');
 }
 async function cloudVerifyStationWrite(id,rev,bundle){
@@ -205,28 +260,40 @@ async function cloudPushSnapshot(snapshot){
   }
 }
 function queueCloudSync(snapshot){
-  if(!cloudSync.ready||cloudSync.conflict)return;
+  if(!cloudSync.ready||cloudSync.conflict||cloudSync.writeFailed)return;
   cloudSync.pending++;
   cloudStatus('warn','云端同步中');
   cloudSync.queue=cloudSync.queue.then(async()=>{
     cloudSync.syncing=true;
-    try{await cloudPushSnapshot(snapshot)}
+    try{
+      if(cloudSync.writeFailed||cloudSync.conflict)return;
+      await cloudPushSnapshot(snapshot);
+    }
     catch(e){
+      cloudSync.writeFailed=true;
       cloudSync.lastError=e&&e.message||String(e);
       if(e&&e.code==='CLOUD_CONFLICT')cloudConflictError(cloudSync.lastError,snapshot);
       else{cloudStatus('bad','同步失败');alert('云端同步失败：'+cloudSync.lastError+'。当前修改仍保留在本机。');}
     }finally{
       cloudSync.syncing=false;cloudSync.pending=Math.max(0,cloudSync.pending-1);
-      if(cloudSync.ready&&!cloudSync.conflict&&cloudSync.pending===0)cloudStatus('ok','云端已同步');
+      try{
+        if(cloudSync.ready&&!cloudSync.conflict&&!cloudSync.writeFailed&&cloudSync.pending===0){
+          cloudClearOutbox();cloudSync.dirty=false;cloudSync.recovery=null;cloudSync.lastError='';
+          cloudStatus('ok','云端已同步');
+        }else cloudPersistOutbox();
+      }catch(e){cloudSync.dirty=true;cloudSync.writeFailed=true;cloudSync.lastError=e.message;cloudStatus('bad','本机备份失败')}
     }
   }).catch(()=>{});
 }
 async function cloudRefresh(force=false){
-  if(!cloudSync.ready||cloudSync.conflict||cloudSync.pending||cloudSync.syncing)return;
+  if(!cloudSync.ready||cloudSync.conflict||cloudSync.pending||cloudSync.syncing||cloudSync.dirty||cloudSync.writeFailed||cloudSync.refreshing)return false;
   if(!force&&typeof route==='function'&&route().page==='station'){
     const a=document.activeElement,tag=a&&a.tagName;
     if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
   }
+  cloudSync.refreshing=true;
+  const epoch=cloudSync.editEpoch,next=clone(state),revisions=new Map(cloudSync.stationRevisions),applied=new Map(cloudSync.remoteAppliedCommands);
+  let metaRevision=cloudSync.metaRevision;
   try{
     const revRes=cloudThrowIfError(await cloudSync.db.from(CLOUD_STATIONS_TABLE).select('id,revision').limit(100),'检查站点版本失败');
     const changed=[];
@@ -237,30 +304,38 @@ async function cloudRefresh(force=false){
     let touched=false;
     for(const id of changed){
       const r=cloudThrowIfError(await cloudSync.db.from(CLOUD_STATIONS_TABLE).select('id,data,revision').eq('id',id).limit(1),'读取更新站点失败');
-      const row=r.data&&r.data[0];if(!row)continue;
-      const bundle=cloudJson(row.data);if(!bundle.station)continue;
-      const idx=state.stations.findIndex(x=>x.id===id);if(idx<0)continue;
-      state.stations[idx]=clone(bundle.station);
-      state.stationUndoHistory=state.stationUndoHistory||{};state.stationRedoHistory=state.stationRedoHistory||{};
-      if(Array.isArray(bundle.undo)&&bundle.undo.length)state.stationUndoHistory[id]=clone(bundle.undo);else delete state.stationUndoHistory[id];
-      if(Array.isArray(bundle.redo)&&bundle.redo.length)state.stationRedoHistory[id]=clone(bundle.redo);else delete state.stationRedoHistory[id];
-      cloudSync.remoteAppliedCommands.set(id,Array.isArray(bundle.appliedRemoteCommands)?clone(bundle.appliedRemoteCommands):[]);
-      cloudSync.stationRevisions.set(id,Number(row.revision||0));touched=true;
+      const row=r.data&&r.data[0];if(!row)throw Error('云端缺少站点：'+id);
+      const bundle=cloudJson(row.data);
+      if(row.id!==id||!bundle.station||bundle.station.id!==id)throw Error('云端站点ID不一致：'+id);
+      const idx=next.stations.findIndex(x=>x.id===id);if(idx<0)throw Error('未知云端站点：'+id);
+      next.stations[idx]=clone(bundle.station);
+      next.stationUndoHistory=next.stationUndoHistory||{};next.stationRedoHistory=next.stationRedoHistory||{};
+      if(Array.isArray(bundle.undo)&&bundle.undo.length)next.stationUndoHistory[id]=clone(bundle.undo);else delete next.stationUndoHistory[id];
+      if(Array.isArray(bundle.redo)&&bundle.redo.length)next.stationRedoHistory[id]=clone(bundle.redo);else delete next.stationRedoHistory[id];
+      applied.set(id,Array.isArray(bundle.appliedRemoteCommands)?clone(bundle.appliedRemoteCommands):[]);
+      revisions.set(id,Number(row.revision||0));touched=true;
     }
     const metaRes=cloudThrowIfError(await cloudSync.db.from(CLOUD_META_TABLE).select('id,data,revision').eq('id',CLOUD_META_ID).limit(1),'检查云端元数据失败');
     const metaRow=metaRes.data&&metaRes.data[0];
     if(metaRow&&Number(metaRow.revision||0)>cloudSync.metaRevision){
-      const metaData=cloudJson(metaRow.data),stations=state.stations,undo=state.stationUndoHistory||{},redo=state.stationRedoHistory||{};
-      state={...clone(metaData.meta||{}),stations,stationUndoHistory:undo,stationRedoHistory:redo};
-      cloudSync.metaRevision=Number(metaRow.revision||0);touched=true;
+      const metaData=cloudJson(metaRow.data);
+      if(Number(metaData.schemaVersion)!==CLOUD_SCHEMA_VERSION)throw Error('云端数据版本不兼容');
+      for(const key of Object.keys(next))if(!['stations','stationUndoHistory','stationRedoHistory'].includes(key))delete next[key];
+      Object.assign(next,clone(metaData.meta||{}));
+      metaRevision=Number(metaRow.revision||0);touched=true;
     }
+    if(epoch!==cloudSync.editEpoch||cloudSync.dirty||cloudSync.pending||cloudSync.conflict)return false;
     if(touched){
-      cloudValidateState(state);saveLocalOnly();cloudSync.syncedState=clone(state);render();toast('已获取其他人的最新修改');
+      cloudValidateState(next);cloudApplyRemote(next);
+      cloudSync.stationRevisions=revisions;cloudSync.remoteAppliedCommands=applied;cloudSync.metaRevision=metaRevision;
+      render();toast('已获取其他人的最新修改');
     }
+    cloudSync.lastError='';cloudStatus('ok','云端已同步');return true;
   }catch(e){
     cloudSync.lastError=e&&e.message||String(e);
     cloudStatus('warn','云端检查失败');
-  }
+    return false;
+  }finally{cloudSync.refreshing=false}
 }
 async function cloudInitializeFromBackup(data,exportedAt){
   if(!cloudSync.db)throw Error('云端尚未连接');
@@ -374,11 +449,21 @@ async function cloudPollRemoteCommands(){
 
 function bindCloudTools(){
   const btn=document.getElementById('cloudInitData'),input=document.getElementById('cloudBackupFile'),refreshBtn=document.getElementById('cloudRefreshNow');
+  const retry=document.getElementById('cloudRetrySync');if(retry)retry.onclick=cloudRetrySync;
   if(refreshBtn)refreshBtn.onclick=async()=>{
-    if(!cloudSync.ready){toast('云端尚未连接');return}
+    if(cloudSync.conflict){
+      if(!confirm('本机有未同步修改。确认保留本机备份并读取云端？未同步修改不会提交到云端。'))return;
+      try{
+        localStorage.setItem(KEY+':cloud-conflict-backup:'+Date.now(),JSON.stringify(state));
+        localStorage.setItem(KEY+':cloud-outbox-archive:'+Date.now(),localStorage.getItem(CLOUD_OUTBOX_KEY)||'');
+        cloudClearOutbox();
+      }catch(e){alert('备份失败，已保留当前修改：'+e.message);return}
+      cloudSync.dirty=false;cloudSync.writeFailed=false;cloudSync.recovery=null;cloudSync.conflict=false;cloudSync.ready=false;
+    }
+    if(!cloudSync.ready){await startCloud();return}
+    if(cloudSync.dirty||cloudSync.pending||cloudSync.syncing){toast('本机修改尚未同步，请先重试同步');return}
     cloudStatus('warn','云端刷新中');
     await cloudRefresh(true);
-    if(cloudSync.ready&&!cloudSync.conflict)cloudStatus('ok','云端已同步');
   };
   if(btn&&input)btn.onclick=()=>input.click();
   if(input)input.onchange=async e=>{
@@ -407,16 +492,21 @@ async function startCloud(){
     if(!remote){
       cloudSync.empty=true;cloudStatus('warn','云端未初始化');cloudInitButton(true);return;
     }
-    cloudApplyRemote(remote);
-    cloudSync.ready=true;cloudSync.empty=false;cloudInitButton(false);cloudStatus('ok','云端已同步');render();
+    if(cloudSync.recovery){
+      const resumed=cloudResumeOutbox(remote);
+      cloudSync.syncedState=clone(remote);state=resumed;saveLocalOnly();
+      cloudSync.ready=true;cloudSync.writeFailed=false;cloudPersistOutbox();queueCloudSync(clone(state));
+    }else{cloudApplyRemote(remote);cloudSync.ready=true;cloudStatus('ok','云端已同步')}
+    cloudSync.empty=false;cloudInitButton(false);render();
     if(!cloudSync.refreshTimer)cloudSync.refreshTimer=setInterval(cloudRefresh,CLOUD_POLL_MS);
     window.addEventListener('focus',()=>cloudRefresh(true));
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)cloudRefresh()});
   }catch(e){
     cloudSync.lastError=e&&e.message||String(e);
-    cloudStatus('bad','云端未连接');
+    if(e.code==='CLOUD_CONFLICT')cloudConflictError(cloudSync.lastError,state);
+    else cloudStatus('bad','云端未连接');
     cloudInitButton(false);
-  }finally{cloudSync.connecting=false}
+  }finally{cloudSync.connecting=false;cloudProtectControls()}
 }
 
 const BASE_VERSION='20260921-newbuild-master-v3';
@@ -1347,6 +1437,26 @@ function revertConstructionScreenshotUpdates(input){
 }
 let storageSnapshot=null;
 function load(){
+  const raw=localStorage.getItem(KEY);storageSnapshot=raw;
+  const outbox=localStorage.getItem(CLOUD_OUTBOX_KEY);
+  cloudSync.outboxRaw=outbox;
+  if(outbox){
+    const pending=JSON.parse(outbox);
+    if(pending.version!==1||!Array.isArray(pending.revisions)||!pending.base)throw Error('待同步备份格式异常，已保留原始数据');
+    cloudValidateState(pending.snapshot);cloudValidateState(pending.base);
+    state=clone(pending.snapshot);cloudSync.recovery=pending;cloudSync.dirty=true;
+    cloudSync.syncedState=clone(pending.base);cloudSync.stationRevisions=new Map(pending.revisions);cloudSync.metaRevision=pending.metaRevision;
+    cloudSync.remoteAppliedCommands=new Map(pending.appliedCommands||[]);
+    return;
+  }
+  state={stations:[],stationUndoHistory:{},stationRedoHistory:{}};
+  if(raw!==null){
+    try{state=cloudValidateState(JSON.parse(raw))}
+    catch(e){localStorage.setItem(KEY+':unreadable-cache:'+Date.now(),raw)}
+  }
+}
+// Historical migration retained only for explicit recovery tooling; never called on startup.
+function loadLegacyForRecovery(){
   const raw=localStorage.getItem(KEY);
   storageSnapshot=raw;
   let dropPresetBackup=false,dropScreenshotBackup=false;
@@ -1387,6 +1497,10 @@ function saveLocalOnly(){
   }
 }
 function save(){
+  if(!cloudSync.ready||cloudSync.conflict)throw Error('云端尚未就绪，请连接后再修改');
+  if(localStorage.getItem(KEY)!==storageSnapshot)throw Error('另一个页面已更新数据，请先备份并刷新');
+  cloudSync.editEpoch++;cloudSync.dirty=true;
+  cloudPersistOutbox();
   saveLocalOnly();
   if(cloudSync.ready&&!cloudSync.conflict)queueCloudSync(clone(state));
 }
@@ -2111,7 +2225,7 @@ function initDailyTools(){
   window.addEventListener('focus',refreshDay);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDay()});
 }
-function render(){try{const r=route();if(r.page==='home')renderHome();else if(r.page==='selection')renderList('selection');else if(r.page==='difficult')renderList('difficult');else if(r.page==='pending')renderList('pending');else if(r.page==='building')renderList('building');else if(r.page==='after')renderList('building');else if(r.page==='complete')renderList('complete');else if(r.page==='schedule')renderList('building');else if(r.page.startsWith('calendar'))renderCalendar();else if(r.page==='station')renderStation(r.id);else if(r.page==='search')renderList('all',{q:r.q});else renderHome();renderDailyTools()}catch(e){document.getElementById('app').innerHTML='<div class="err"><b>页面加载失败</b><br>'+esc(e&&e.message||e)+'</div>';console.error(e)}}
+function render(){try{const r=route();if(r.page==='home')renderHome();else if(r.page==='selection')renderList('selection');else if(r.page==='difficult')renderList('difficult');else if(r.page==='pending')renderList('pending');else if(r.page==='building')renderList('building');else if(r.page==='after')renderList('building');else if(r.page==='complete')renderList('complete');else if(r.page==='schedule')renderList('building');else if(r.page.startsWith('calendar'))renderCalendar();else if(r.page==='station')renderStation(r.id);else if(r.page==='search')renderList('all',{q:r.q});else renderHome();renderDailyTools();cloudProtectControls()}catch(e){document.getElementById('app').innerHTML='<div class="err"><b>页面加载失败</b><br>'+esc(e&&e.message||e)+'</div>';console.error(e)}}
 async function boot(){
   try{load()}catch(e){document.getElementById('app').innerHTML='<div class="err">'+esc(e.message)+'</div>';throw e}
   document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>go(b.dataset.page));

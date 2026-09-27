@@ -37,7 +37,7 @@ const CLOUD_META_TABLE='feixi_meta';
 const CLOUD_META_ID='main';
 const CLOUD_SCHEMA_VERSION=2;
 const CLOUD_POLL_MS=15000;
-const CLOUD_RELEASE='2026-09-27-status-1';
+const CLOUD_RELEASE='2026-09-27-focus-1';
 const CLOUD_OUTBOX_KEY='feixi-v072-state:cloud-outbox-v1';
 const CLOUD_INITIAL_COUNTS={selection:9,difficult:18,pending:10,building:12,complete:27};
 let state;
@@ -1785,8 +1785,16 @@ function smartInsight(s){
   }
   return null;
 }
+function needsFocus(s){
+  const module=stationModule(s);
+  if(module==='difficult')return s.selectionProblemStatus!=='已解决';
+  if(module==='pending')return pendingEstablishMeta(s).label!=='暂缓/无需关注';
+  if(module==='selection')return !s.selectionHold&&due(s);
+  if(module==='building')return risk(s);
+  return false;
+}
 function smartQueue(){
-  return state.stations.map(s=>({s,advice:smartInsight(s)})).filter(x=>x.advice&&x.advice.priority>=60).sort((a,b)=>b.advice.priority-a.advice.priority||String(a.s.demandName||'').localeCompare(String(b.s.demandName||''),'zh-CN'));
+  return state.stations.filter(needsFocus).map(s=>({s,advice:smartInsight(s)})).filter(x=>x.advice).sort((a,b)=>b.advice.priority-a.advice.priority||String(a.s.demandName||'').localeCompare(String(b.s.demandName||''),'zh-CN'));
 }
 function smartDataIssues(){
   const out=[];
@@ -1833,15 +1841,7 @@ function homeRow(s,mode){if(mode==='selection'){const fd=followDays(s),when=fd==
 
 let homeFocusFilter='all',homeFocusExpanded=false;
 function stationDisplayName(s){return String(s.towerName||'').trim()&&!['暂无','待补充'].includes(s.towerName)?s.towerName:s.demandName}
-function focusItems(){
-  const items=new Map(smartQueue().map(x=>[x.s.id,x]));
-  for(const s of state.stations){
-    if((isSelection(s)&&due(s))||(stationModule(s)==='building'&&risk(s))){
-      if(!items.has(s.id))items.set(s.id,{s,advice:smartInsight(s)});
-    }
-  }
-  return [...items.values()].filter(x=>x.advice).sort((a,b)=>b.advice.priority-a.advice.priority);
-}
+function focusItems(){return smartQueue()}
 function renderHome(){
   navOn('home');
   const counts=cloudModuleCounts(state),all=focusItems(),issues=smartDataIssues();

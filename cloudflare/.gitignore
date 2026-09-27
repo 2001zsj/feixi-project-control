@@ -1,0 +1,6 @@
+public/
+pages-public/
+generated-rules.mjs
+.wrangler/
+.dev.vars
+secrets*.json

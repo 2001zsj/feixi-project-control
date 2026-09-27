@@ -1,0 +1,6 @@
+{
+  "name": "fxtt-feixi",
+  "compatibility_date": "2026-09-27",
+  "pages_build_output_dir": "../pages-public",
+  "d1_databases": [{"binding":"DB","database_name":"fxtt","database_id":"cc5fbfd7-fcab-498b-9a94-94d3cdcd98c3"}]
+}

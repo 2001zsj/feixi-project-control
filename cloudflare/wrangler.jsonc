@@ -1,0 +1,9 @@
+{
+  "name":"fxtt",
+  "main":"worker.mjs",
+  "compatibility_date":"2026-09-27",
+  "account_id":"8e424d1329fca9adfed0ad555530df1a",
+  "workers_dev":true,
+  "assets":{"directory":"./public","binding":"ASSETS","run_worker_first":true},
+  "d1_databases":[{"binding":"DB","database_name":"fxtt","database_id":"cc5fbfd7-fcab-498b-9a94-94d3cdcd98c3"}]
+}

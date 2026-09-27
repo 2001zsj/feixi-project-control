@@ -8,6 +8,9 @@ on:
       - 'tests/module-order.cjs'
       - 'tests/status-rules.cjs'
       - 'tests/focus-rules.cjs'
+      - 'tests/consistency-rules.cjs'
+      - 'tools/station-rules.cjs'
+      - '.github/workflows/apply-cloudbase-updates.yml'
       - '.github/workflows/verify-cloudbase-ui.yml'
   workflow_dispatch:
 permissions:
@@ -24,3 +27,4 @@ jobs:
       - run: node tests/module-order.cjs
       - run: node tests/status-rules.cjs
       - run: node tests/focus-rules.cjs
+      - run: node tests/consistency-rules.cjs

@@ -37,7 +37,7 @@ const CLOUD_META_TABLE='feixi_meta';
 const CLOUD_META_ID='main';
 const CLOUD_SCHEMA_VERSION=2;
 const CLOUD_POLL_MS=15000;
-const CLOUD_RELEASE='2026-09-27-focus-1';
+const CLOUD_RELEASE='2026-09-27-consistency-1';
 const CLOUD_OUTBOX_KEY='feixi-v072-state:cloud-outbox-v1';
 const CLOUD_INITIAL_COUNTS={selection:9,difficult:18,pending:10,building:12,complete:27};
 let state;
@@ -392,13 +392,13 @@ async function cloudApplyRemoteCommand(cmd){
     cloudSync.stationRevisions.set(id,Number(row.revision||0));
     return false;
   }
-  const station=bundle.station;if(!station)throw Error('远程更新站点数据异常：'+id);
+  let station=bundle.station;if(!station)throw Error('远程更新站点数据异常：'+id);
   if(!cloudExpectedMatches(station,cmd.expected)){
     cloudSync.lastError='远程更新前置条件不满足：'+id+' / '+cmd.id;
     return false;
   }
   const before=clone(station);
-  for(const [path,value] of Object.entries(cmd.patch))cloudFieldSet(station,path,value);
+  station=applyRemoteStationPatch(before,cmd,today());
   if(cmd.note){
     if(!Array.isArray(station.updates))station.updates=[];
     if(!station.updates.some(x=>x&&x.remoteCommandId===cmd.id)){
@@ -406,10 +406,10 @@ async function cloudApplyRemoteCommand(cmd){
     }
   }
   const undo=Array.isArray(bundle.undo)?bundle.undo:[];
-  undo.push({at:editTimeNow(),label:String(cmd.label||'自动同步施工进度'),snapshot:before});
+  undo.push({at:editTimeNow(),label:String(cmd.label||'自动同步施工进度'),snapshot:before,expectedAfter:clone(station)});
   if(undo.length>STATION_HISTORY_LIMIT)undo.splice(0,undo.length-STATION_HISTORY_LIMIT);
   bundle.station=station;bundle.undo=undo;bundle.redo=[];
-  bundle.appliedRemoteCommands=applied.concat(String(cmd.id)).slice(-100);
+  bundle.appliedRemoteCommands=[...new Set(applied.concat(String(cmd.id)))];
   const rev=Number(row.revision||0);
   const wr=cloudThrowIfError(await cloudSync.db.from(CLOUD_STATIONS_TABLE)
     .update({data:bundle,revision:rev+1,updated_at:new Date().toISOString()},{count:'exact'})
@@ -435,7 +435,7 @@ async function cloudApplyRemoteCommand(cmd){
   return true;
 }
 async function cloudPollRemoteCommands(){
-  if(!cloudSync.ready||cloudSync.conflict||cloudSync.pending||cloudSync.syncing)return;
+  if(!cloudSync.ready||cloudSync.dirty||cloudSync.conflict||cloudSync.pending||cloudSync.syncing)return;
   try{
     const res=await fetch(CLOUD_REMOTE_COMMANDS_URL+'?v='+Date.now(),{cache:'no-store'});
     if(!res.ok)return;
@@ -523,6 +523,7 @@ const LATEST_BASE_PRESET_IDS=["design-2026-003","design-2026-004","design-2026-0
 const COMPLETE_PRESET_IDS=["design-2026-003","design-2026-004","design-2026-006","design-2026-007","design-2026-008","design-2026-013","design-2026-014","design-2026-016","design-2026-017","design-2026-018","design-2026-019","design-2026-020","design-2026-021","design-2026-029","design-2026-031","design-2026-040","design-2026-043"];
 function clone(x){return x===undefined?undefined:JSON.parse(JSON.stringify(x))}
 const STATION_HISTORY_LIMIT=8;
+const historyRestoreIds=new Set();
 function editTimeNow(){
   const d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
@@ -540,7 +541,7 @@ function stationHistoryList(id,type='undo'){
 function recordStationUndo(s,label){
   if(!s||!s.id)return;
   const arr=stationHistoryList(s.id,'undo');
-  arr.push({at:editTimeNow(),label:String(label||'修改站点'),snapshot:clone(s)});
+  arr.push({at:editTimeNow(),label:String(label||'修改站点'),snapshot:clone(s),pendingAfter:true});
   if(arr.length>STATION_HISTORY_LIMIT)arr.splice(0,arr.length-STATION_HISTORY_LIMIT);
   state.stationRedoHistory[s.id]=[];
 }
@@ -554,10 +555,14 @@ function restoreStationHistory(id,type='undo'){
   if(!source.length)return null;
   const idx=state.stations.findIndex(s=>s.id===id);
   if(idx<0)throw Error('找不到需要恢复的站点');
-  const entry=source.pop(),current=clone(state.stations[idx]);
-  target.push({at:editTimeNow(),label:entry.label,snapshot:current});
+  const entry=source[source.length-1],current=clone(state.stations[idx]);
+  if(!entry.expectedAfter)throw Error('这条旧记录缺少修改后校验信息，无法安全撤销，请核对后手动修正');
+  if(!cloudSame(current,entry.expectedAfter))throw Error('该站点在这次操作后已有其他修改，已保留当前数据，请核对后再处理');
+  assertStationChange(current,entry.snapshot,today(),true);
+  source.pop();target.push({at:editTimeNow(),label:entry.label,snapshot:current,expectedAfter:clone(entry.snapshot)});
   if(target.length>STATION_HISTORY_LIMIT)target.splice(0,target.length-STATION_HISTORY_LIMIT);
   state.stations[idx]=clone(entry.snapshot);
+  historyRestoreIds.add(id);
   save();
   return entry;
 }
@@ -1507,6 +1512,16 @@ function saveLocalOnly(){
 function save(){
   if(!cloudSync.ready||cloudSync.conflict)throw Error('云端尚未就绪，请连接后再修改');
   if(localStorage.getItem(KEY)!==storageSnapshot)throw Error('另一个页面已更新数据，请先备份并刷新');
+  const prior=storageSnapshot?JSON.parse(storageSnapshot):cloudSync.syncedState;
+  try{
+    for(const station of state.stations){
+      const before=prior?.stations?.find(s=>s.id===station.id);
+      if(before&&!cloudSame(before,station))assertStationChange(before,station,today(),historyRestoreIds.has(station.id));
+      const entry=state.stationUndoHistory?.[station.id]?.at(-1);
+      if(entry&&entry.pendingAfter){entry.expectedAfter=clone(station);delete entry.pendingAfter}
+    }
+  }catch(e){if(prior)state=clone(prior);alert('修改未保存：'+e.message);throw e}
+  finally{historyRestoreIds.clear()}
   cloudSync.editEpoch++;cloudSync.dirty=true;
   cloudPersistOutbox();
   saveLocalOnly();
@@ -1726,19 +1741,53 @@ function pendingEstablishMeta(s){
   const label=PENDING_STATUSES.includes(s.pendingEstablishStatus)?s.pendingEstablishStatus:'待立项';
   return {label,cls:['赔补待处理','暂缓/无需关注'].includes(label)?'o':'b'};
 }
-function validateActualDate(date){
-  if(!parseDate(date))return '请选择有效实际日期';
-  if(date>today())return '实际日期不能晚于今天，计划日期不能作为实际完成日期';
-  return '';
+// SHARED_STATION_RULES_BEGIN
+function ruleSame(a,b){return JSON.stringify(a)===JSON.stringify(b)}
+function ruleDateError(date,asOf){
+  const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date||''));
+  if(!match)return '请选择有效实际日期';
+  const [y,m,d]=match.slice(1).map(Number),dt=new Date(Date.UTC(y,m-1,d));
+  if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==m-1||dt.getUTCDate()!==d)return '请选择有效实际日期';
+  return date>asOf?'实际日期不能晚于今天，计划日期不能作为实际完成日期':'';
 }
-function validateNodeDate(s,key,date){
-  const error=validateActualDate(date);if(error)return error;
+function ruleNodeError(s,key,date,asOf){
+  const error=ruleDateError(date,asOf);if(error)return error;
   const candidate={...s,[key]:date};
   const pairs=[['establishDate','entryDate'],['entryDate','pourDate'],['pourDate','towerDate'],...['establishDate','entryDate','pourDate','towerDate','powerDate','supportDate'].map(k=>[k,'completeDate'])];
   const labels={establishDate:'立项',entryDate:'进场',pourDate:'浇筑',towerDate:'装塔',powerDate:'引电',supportDate:'配套',completeDate:'整站完成'};
   for(const [before,after] of pairs){if((key===before||key===after)&&candidate[before]&&candidate[after]&&candidate[before]>candidate[after])return labels[after]+'日期不能早于'+labels[before]+'日期'}
+  if(candidate.pourDate&&candidate.towerDate&&candidate.pourDate===candidate.towerDate&&['pourDate','towerDate'].includes(key))return '浇筑与装塔不能同一天';
   return '';
 }
+function assertStationChange(before,after,asOf,historyRestore=false){
+  if(!before||!after||before.id!==after.id)throw Error('站点ID不可修改');
+  for(const key of ['selectionDoneDate','establishDate','entryDate','pourDate','towerDate','powerDate','supportDate','completeDate']){
+    if(after[key]&&!ruleSame(before[key],after[key])){const error=ruleNodeError(after,key,after[key],asOf);if(error)throw Error(error)}
+  }
+  const oldCode=String(before.establishRef||'').trim(),newCode=String(after.establishRef||'').trim();
+  if(!historyRestore&&oldCode!==newCode){
+    if(oldCode){
+      const archived=(after.priorProjectHistory||[]).some(p=>p.establishRef===oldCode&&['establishDate','entryDate','pourDate','towerDate','powerDate','supportDate','completeDate'].every(k=>(p[k]||'')===(before[k]||'')));
+      if(!archived)throw Error('变更项目编码前必须销项并保留原项目节点');
+      if(['entryDate','pourDate','towerDate','powerDate','supportDate','completeDate'].some(k=>after[k])||after.completeConfirmed)throw Error('新项目不能继承旧项目实际节点');
+    }
+    if(newCode&&!after.selectionDone)throw Error('请先确认选址完成再立项');
+  }
+}
+function applyRemoteStationPatch(before,cmd,asOf){
+  const next=JSON.parse(JSON.stringify(before));
+  for(const [path,value] of Object.entries(cmd.patch||{})){
+    const parts=path.split('.');if(parts.some(k=>!k||['__proto__','prototype','constructor','id'].includes(k)))throw Error('不允许的站点更新字段');
+    let cur=next;for(const key of parts.slice(0,-1)){if(!cur[key]||typeof cur[key]!=='object')cur[key]={};cur=cur[key]}
+    if(path==='priorProjectHistory'&&Array.isArray(value)){
+      const merged=[...(next.priorProjectHistory||[]),...value];const seen=new Set();next.priorProjectHistory=merged.filter(p=>{const key=JSON.stringify(p);if(seen.has(key))return false;seen.add(key);return true});
+    }else cur[parts.at(-1)]=JSON.parse(JSON.stringify(value));
+  }
+  assertStationChange(before,next,asOf);return next;
+}
+// SHARED_STATION_RULES_END
+function validateActualDate(date){return ruleDateError(date,today())}
+function validateNodeDate(s,key,date){return ruleNodeError(s,key,date,today())}
 const SMART_RULE_VERSION='20260922-v1';
 function smartActionFromText(text,scope='pending'){
   const t=String(text||'');
@@ -1945,8 +1994,8 @@ body+=`<details class="panel base-details"><summary class="ph"><b>基础资料</
 body+=stationModule(s)==='pending'?stationMaintenancePanel(s):`<details class="panel more-actions"><summary class="ph"><b>历史与更多操作</b></summary>${stationMaintenancePanel(s)}</details>`;
 app.innerHTML=body;document.getElementById('backBtn').onclick=()=>history.back();
 const undoBtn=document.getElementById('undoStation'),redoBtn=document.getElementById('redoStation');
-if(undoBtn)undoBtn.onclick=()=>{const info=latestStationHistory(id,'undo');if(!info)return;if(!confirm('撤销“'+info.label+'”（'+info.at+'）？'))return;const done=restoreStationHistory(id,'undo');toast('已撤销：'+done.label);renderStation(id)};
-if(redoBtn)redoBtn.onclick=()=>{const info=latestStationHistory(id,'redo');if(!info)return;if(!confirm('重做“'+info.label+'”？'))return;const done=restoreStationHistory(id,'redo');toast('已重做：'+done.label);renderStation(id)};
+if(undoBtn)undoBtn.onclick=()=>{const info=latestStationHistory(id,'undo');if(!info)return;if(!confirm('撤销“'+info.label+'”（'+info.at+'）？'))return;try{const done=restoreStationHistory(id,'undo');toast('已撤销：'+done.label);renderStation(id)}catch(e){alert(e.message)}};
+if(redoBtn)redoBtn.onclick=()=>{const info=latestStationHistory(id,'redo');if(!info)return;if(!confirm('重做“'+info.label+'”？'))return;try{const done=restoreStationHistory(id,'redo');toast('已重做：'+done.label);renderStation(id)}catch(e){alert(e.message)}};
 bindStationMaintenance(s);
 const editBaseBtn=document.getElementById('editBaseBtn'),baseEdit=document.getElementById('baseEdit');
 if(editBaseBtn&&baseEdit){const projectCode=document.getElementById('be_establishRef');if(projectCode){projectCode.readOnly=true;projectCode.title='项目编码通过站点维护中的立项或销项操作修改'}editBaseBtn.onclick=()=>baseEdit.classList.remove('hide');document.getElementById('cancelBase').onclick=()=>baseEdit.classList.add('hide');document.getElementById('saveBase').onclick=()=>{recordStationUndo(s,'编辑基础信息');const keys=['demandName','operator','demandOrder','demandDate','demandLng','demandLat','selector','territory','towerName','siteCode','siteLng','siteLat','buildMethod','buildConfig'];keys.forEach(k=>{const el=document.getElementById('be_'+k);if(el)s[k]=el.value.trim()});s.lastUpdate=today();save();toast('基础信息已保存');renderStation(id)}}

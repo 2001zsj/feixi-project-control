@@ -30,6 +30,7 @@ jobs:
         run: |
           node <<'NODE'
           const fs = require('fs');
+          const {applyRemoteStationPatch}=require('./tools/station-rules.cjs');
 
           const envId = process.env.CLOUDBASE_ENV_ID;
           const gateway = `https://${envId}.api.tcloudbasegateway.com`;
@@ -95,7 +96,7 @@ jobs:
               if(!Array.isArray(rows) || !rows.length) throw new Error('Station not found: '+id);
               const row=rows[0];
               const bundle=typeof row.data==='string'?JSON.parse(row.data):clone(row.data||{});
-              const station=bundle.station;
+              let station=bundle.station;
               if(!station) throw new Error('Station bundle invalid: '+id);
 
               const done=Array.isArray(bundle.appliedRemoteCommands)?bundle.appliedRemoteCommands:[];
@@ -111,19 +112,7 @@ jobs:
               }
 
               const before=clone(station);
-              for(const [path,value] of Object.entries(cmd.patch)){
-                if(path==='priorProjectHistory' && Array.isArray(value)){
-                  const existing=Array.isArray(station.priorProjectHistory)?station.priorProjectHistory:[];
-                  const merged=existing.concat(clone(value));
-                  const seen=new Set();
-                  station.priorProjectHistory=merged.filter(x=>{
-                    const key=JSON.stringify([x&&x.establishRef||'',x&&x.closedDate||'',x&&x.closeRemark||'']);
-                    if(seen.has(key)) return false; seen.add(key); return true;
-                  });
-                }else{
-                  setPath(station,path,value);
-                }
-              }
+              station=applyRemoteStationPatch(before,cmd,editTimeNow().slice(0,10));
 
               if(cmd.note){
                 if(!Array.isArray(station.updates)) station.updates=[];
@@ -133,13 +122,13 @@ jobs:
               }
 
               const undo=Array.isArray(bundle.undo)?bundle.undo:[];
-              undo.push({at:editTimeNow(),label:String(cmd.label||'自动同步施工进度'),snapshot:before});
+              undo.push({at:editTimeNow(),label:String(cmd.label||'自动同步施工进度'),snapshot:before,expectedAfter:clone(station)});
               if(undo.length>8) undo.splice(0,undo.length-8);
 
               bundle.station=station;
               bundle.undo=undo;
               bundle.redo=[];
-              bundle.appliedRemoteCommands=done.concat(String(cmd.id)).slice(-100);
+              bundle.appliedRemoteCommands=[...new Set(done.concat(String(cmd.id)))];
 
               const rev=Number(row.revision||0);
               const filter=new URLSearchParams({id:`eq.${id}`,revision:`eq.${rev}`});

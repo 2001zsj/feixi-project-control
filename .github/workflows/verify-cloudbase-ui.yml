@@ -9,6 +9,7 @@ on:
       - 'tests/status-rules.cjs'
       - 'tests/focus-rules.cjs'
       - 'tests/consistency-rules.cjs'
+      - 'tests/ledger-export.cjs'
       - 'tools/station-rules.cjs'
       - '.github/workflows/apply-cloudbase-updates.yml'
       - '.github/workflows/verify-cloudbase-ui.yml'
@@ -28,3 +29,4 @@ jobs:
       - run: node tests/status-rules.cjs
       - run: node tests/focus-rules.cjs
       - run: node tests/consistency-rules.cjs
+      - run: node tests/ledger-export.cjs

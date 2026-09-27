@@ -5,6 +5,7 @@ on:
     paths:
       - 'cloudbase-dist/index.html'
       - 'tests/cloudbase-sync.cjs'
+      - 'tests/module-order.cjs'
       - '.github/workflows/verify-cloudbase-ui.yml'
   workflow_dispatch:
 permissions:
@@ -18,3 +19,4 @@ jobs:
         with:
           node-version: '20'
       - run: node tests/cloudbase-sync.cjs
+      - run: node tests/module-order.cjs

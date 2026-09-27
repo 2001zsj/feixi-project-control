@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/:path*",
+      "permanent": false
+    }
+  ]
+}

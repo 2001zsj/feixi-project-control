@@ -6,6 +6,7 @@ on:
       - 'cloudbase-dist/index.html'
       - 'tests/cloudbase-sync.cjs'
       - 'tests/module-order.cjs'
+      - 'tests/status-rules.cjs'
       - '.github/workflows/verify-cloudbase-ui.yml'
   workflow_dispatch:
 permissions:
@@ -20,3 +21,4 @@ jobs:
           node-version: '20'
       - run: node tests/cloudbase-sync.cjs
       - run: node tests/module-order.cjs
+      - run: node tests/status-rules.cjs

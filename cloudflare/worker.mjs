@@ -1,4 +1,5 @@
 import {assertStationChange} from './generated-rules.mjs';
+import {createStation} from './create-station.mjs';
 const enc=new TextEncoder();
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY'};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}});
@@ -11,12 +12,14 @@ async function database(req,env){
  const q=JSON.parse(text),table=q.table;
  if(!['feixi_stations','feixi_meta'].includes(table))throw Error('不允许的数据表');
  const filters=q.filters||{},keys=Object.keys(filters);if(keys.some(k=>!['id','revision'].includes(k)))throw Error('不允许的查询条件');
- const values=keys.map(k=>filters[k]);const where=keys.length?' WHERE '+keys.map(k=>k+' = ?').join(' AND '):'';
+ const values=keys.map(k=>filters[k]);const conditions=keys.map(k=>k+' = ?');
+ if(q.operation==='select'&&q.cursor){if(typeof q.cursor!=='string')throw Error('无效分页');conditions.push('id > ?');values.push(q.cursor)}
+ const where=conditions.length?' WHERE '+conditions.join(' AND '):'';
  if(q.operation==='select'){
   const cols=q.fields==='*'?['id','data','revision','updated_at']:String(q.fields).split(',');
   if(cols.some(k=>!['id','data','revision','updated_at'].includes(k)))throw Error('不允许的字段');
   const result=await env.DB.prepare(`SELECT ${cols.join(',')} FROM ${table}${where} ORDER BY id LIMIT ?`).bind(...values,Math.min(100,Math.max(1,Number(q.limit)||100))).all();
-  return json({data:result.results.map(r=>({...r,...('data' in r?{data:JSON.parse(r.data)}:{})}))});
+  return json({data:result.results.map(r=>({...r,...('data' in r?{data:JSON.parse(r.data)}:{})})),nextCursor:result.results.length===Math.min(100,Math.max(1,Number(q.limit)||100))?result.results.at(-1).id:null});
  }
  if(q.operation!=='update'||typeof filters.id!=='string'||!Number.isSafeInteger(filters.revision)||filters.revision<1)throw Error('更新必须携带站点与版本');
  const p=q.payload;if(!p||p.revision!==filters.revision+1||!p.data)throw Error('无效更新版本');
@@ -25,12 +28,13 @@ async function database(req,env){
  const before=JSON.parse(row.data),after=p.data;
  if(table==='feixi_stations'){
   if(after.station?.id!==filters.id||!Array.isArray(after.undo)||!Array.isArray(after.redo)||!Array.isArray(after.appliedRemoteCommands))throw Error('无效站点数据');
+  if(after.station.creationFingerprint!==before.station.creationFingerprint)throw Error('不能改写新增请求标识');
   const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
   const history=[before.undo?.at(-1),before.redo?.at(-1)].some(e=>e&&same(e.expectedAfter,before.station)&&same(e.snapshot,after.station));
   const asOf=new Date(Date.now()+8*3600000).toISOString().slice(0,10);
   assertStationChange(before.station,after.station,asOf,history);
   if(!same(before.appliedRemoteCommands||[],after.appliedRemoteCommands))throw Error('不能改写远程命令回执');
- }else if(after.schemaVersion!==before.schemaVersion||after.stationCount!==before.stationCount||!after.meta)throw Error('不能修改底册结构');
+ }else {if(after.schemaVersion!==before.schemaVersion||!after.meta)throw Error('不能修改底册结构');after.stationCount=before.stationCount}
  const result=await env.DB.prepare(`UPDATE ${table} SET data=?,revision=?,updated_at=? WHERE id=? AND revision=?`).bind(JSON.stringify(after),p.revision,new Date().toISOString(),filters.id,filters.revision).run();
  return json({count:result.meta.changes});
 }
@@ -47,6 +51,7 @@ export default {async fetch(req,env){
  }
  if(url.pathname==='/logout'&&req.method==='POST')return new Response(null,{status:303,headers:{...headers,Location:'/', 'Set-Cookie':'fxtt_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'}});
  if(!(await authorized(req,env)))return url.pathname.startsWith('/api/')?json({error:{message:'请先登录'}},401):new Response(loginHtml,{headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
+ if(url.pathname==='/api/stations'&&req.method==='POST'){try{return json(await createStation(req,env))}catch(e){return json({error:{message:e.message}},400)}}
  if(url.pathname==='/api/db'&&req.method==='POST'){try{return await database(req,env)}catch(e){return json({error:{message:e.message}},400)}}
  if(req.method!=='GET'&&req.method!=='HEAD')return new Response('Method not allowed',{status:405});
  if(!['/','/index.html','/adapter.js'].includes(url.pathname))return new Response('Not found',{status:404});

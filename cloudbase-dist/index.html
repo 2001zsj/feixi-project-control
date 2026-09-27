@@ -21,6 +21,28 @@ body{font-size:13px;color:#202d40;background:#f4f6f9}.wrap{padding:16px 20px;max
 @media(max-width:720px){.top{gap:7px;padding:8px 10px}.brand{width:auto;font-size:14px}.search{order:4;flex-basis:100%;width:100%}.nav{gap:0}.nav button{padding:6px 9px}.wrap{padding:12px 10px}.title h1{font-size:17px}.dashboard-title>div{display:block}.lifecycle-summary{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}.lifecycle-summary button{display:block;text-align:center;padding:10px 2px;font-size:11px}.lifecycle-summary b{display:block;font-size:22px;margin-top:5px}.hrow{grid-template-columns:minmax(0,1fr);gap:6px;padding:10px}.hrow .hproblem{grid-column:auto;grid-row:auto}.hstatus{justify-content:space-between;white-space:normal}.hrow .sub{line-height:1.5}.hrow .row-arrow{margin-left:auto}.row{grid-template-columns:minmax(0,1fr) 16px;gap:5px;min-height:0}.row .empty-field{display:none}.row .lab{display:none}.row .mobilehide{grid-column:1}.row>div:last-child{grid-column:2;grid-row:1}.deadline{grid-template-columns:1fr;gap:9px}.nodebar{grid-template-columns:1fr 1fr;gap:8px}.nodebar>.actions{grid-column:1/-1}.timeline{grid-template-columns:repeat(2,minmax(0,1fr))}.tl{padding:8px}.title{flex-wrap:wrap}.station-heading{min-width:70%;order:2}.title>.tag{order:3}.base{grid-template-columns:repeat(2,minmax(0,1fr))}.pb{padding:9px}.focus-filters{padding:9px 9px 0}.data-tools[open]>.actions{min-width:210px}.panel-foot{padding-top:10px}}
 
 .module-sort-row{position:relative;padding-left:40px}.sort-handle{position:absolute;left:5px;top:50%;transform:translateY(-50%);width:30px;height:40px;border:0;background:transparent;color:#7b8796;cursor:grab;touch-action:none;font-size:22px;border-radius:4px}.sort-handle:hover,.sort-handle:focus-visible{background:#eaf1ff;color:#2767df}.module-sort-row.sort-source{opacity:.5}.module-sort-row.sort-before{box-shadow:0 -3px #2767df}.module-sort-row.sort-after{box-shadow:0 3px #2767df}body.sorting{user-select:none;cursor:grabbing}
+
+/* Touch layouts and form sizing, including narrow phones and landscape keyboards. */
+.new-station-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.new-station-grid input,.new-station-grid select,.new-wide textarea{display:block;width:100%;margin-top:5px}
+.new-wide{display:block;margin-top:12px}.new-wide textarea{min-height:80px}
+#createError:not(:empty){margin-top:10px;color:#b45309;overflow-wrap:anywhere}
+@media(max-width:720px){
+ body{font-size:14px}.top{position:relative;gap:6px}.top .nav{position:relative;overscroll-behavior-x:contain;scrollbar-width:thin}
+ .btn,.nav button,input,select,summary.btn{min-height:44px}input,select,textarea{font-size:16px;max-width:100%}textarea{width:100%}
+ .title{gap:8px}.dashboard-title>div{flex-basis:100%}.dashboard-title>.sp{display:none}.dashboard-title>.btn{flex:1}
+ .focus{grid-template-columns:minmax(0,1fr)}.focus>div:last-child{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+ .follow{grid-template-columns:minmax(0,1fr)}.base,.editgrid,.new-station-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .actions>*{max-width:100%;min-width:0!important}.actions>input{flex-basis:100%!important}.actions>div{flex-basis:100%}
+ .nodebar input,.nodebar select{width:100%}.ph{gap:8px}.ph>.btn{flex-shrink:0}
+ .hist{grid-template-columns:1fr auto}.hist>div:nth-child(2){grid-column:1/-1;grid-row:2;overflow-wrap:anywhere}
+ .module-sort-row{padding-left:52px}.sort-handle{width:44px;height:48px;left:3px}
+ .new-save{position:sticky;bottom:0;padding:10px 0 max(10px,env(safe-area-inset-bottom));background:#fff;z-index:2}.new-save .primary{flex:1}
+ .toast{left:10px;right:10px;bottom:max(12px,env(safe-area-inset-bottom));text-align:center}
+ .data-tools[open]>.actions{max-width:calc(100vw - 24px)}
+}
+@media(max-width:420px){.new-station-grid,.editgrid{grid-template-columns:minmax(0,1fr)}.brand{font-size:13px}.top{column-gap:4px}.top>.tag{font-size:10px}.top>.btn{padding-left:8px;padding-right:8px}.top form[action='/logout'] .btn{padding:6px}}
+
 </style>
 </head><body>
 <div class="top"><div class="brand">肥西站点推进</div><span id="cloudStatus" class="tag">本机</span><button class="btn" id="cloudRefreshNow" title="立即从云端读取最新数据">↻</button><button class="btn" id="cloudRetrySync" style="display:none">重试同步</button><button class="btn" id="cloudInitData" style="display:none">导入云端底册</button><div class="nav"><button data-page="home">工作台</button><button data-page="selection">选址中</button><button data-page="difficult">疑难站址</button><button data-page="pending">待立项</button><button data-page="building">施工中</button><button data-page="complete">完工站</button><button data-page="calendar">大陆日历</button></div><form class="search" id="searchForm"><input id="globalSearch" placeholder="搜索站名 / 铁塔站名 / 订单号 / 项目编码 / 站址编码 / 归属地"><button class="btn">搜索</button></form></div>
@@ -128,11 +150,9 @@ function cloudJson(v){
 }
 function cloudValidateState(candidate){
   if(!candidate||!Array.isArray(candidate.stations))throw Error('云端数据缺少站点底册');
-  const expected=new Set(SEED.stations.map(s=>s.id));
-  if(candidate.stations.length!==expected.size)throw Error('云端站点数量不是'+expected.size+'站');
   const seen=new Set();
   for(const st of candidate.stations){
-    if(!st||!st.id||seen.has(st.id)||!expected.has(st.id))throw Error('云端站点ID异常：'+String(st&&st.id||'空'));
+    if(!st||typeof st.id!=='string'||!st.id||seen.has(st.id))throw Error('云端站点ID异常：'+String(st&&st.id||'空'));
     seen.add(st.id);
   }
   return candidate;
@@ -180,20 +200,16 @@ async function cloudReadAll(){
   if(Number(metaData.schemaVersion||0)!==CLOUD_SCHEMA_VERSION)throw Error('云端数据版本不兼容');
   const stationRes=cloudThrowIfError(await cloudSync.db.from(CLOUD_STATIONS_TABLE).select('id,data,revision').limit(100),'读取云端站点失败');
   const rows=stationRes.data||[];
-  if(rows.length!==SEED.stations.length)throw Error('云端站点底册不完整：'+rows.length+'/'+SEED.stations.length);
-  const byId=new Map(rows.map(r=>[String(r.id),r]));
   const next={...clone(metaData.meta||{}),stations:[],stationUndoHistory:{},stationRedoHistory:{}};
   cloudSync.stationRevisions=new Map();
-  for(const seed of SEED.stations){
-    const row=byId.get(seed.id);
-    if(!row)throw Error('云端缺少站点：'+seed.id);
+  for(const row of rows){
     const bundle=cloudJson(row.data);
-    if(!bundle.station||bundle.station.id!==seed.id)throw Error('云端站点数据异常：'+seed.id);
+    if(!bundle.station||bundle.station.id!==row.id)throw Error('云端站点数据异常：'+row.id);
     next.stations.push(clone(bundle.station));
-    if(Array.isArray(bundle.undo)&&bundle.undo.length)next.stationUndoHistory[seed.id]=clone(bundle.undo);
-    if(Array.isArray(bundle.redo)&&bundle.redo.length)next.stationRedoHistory[seed.id]=clone(bundle.redo);
-    cloudSync.remoteAppliedCommands.set(seed.id,Array.isArray(bundle.appliedRemoteCommands)?clone(bundle.appliedRemoteCommands):[]);
-    cloudSync.stationRevisions.set(seed.id,Number(row.revision||0));
+    if(Array.isArray(bundle.undo)&&bundle.undo.length)next.stationUndoHistory[row.id]=clone(bundle.undo);
+    if(Array.isArray(bundle.redo)&&bundle.redo.length)next.stationRedoHistory[row.id]=clone(bundle.redo);
+    cloudSync.remoteAppliedCommands.set(row.id,Array.isArray(bundle.appliedRemoteCommands)?clone(bundle.appliedRemoteCommands):[]);
+    cloudSync.stationRevisions.set(row.id,Number(row.revision||0));
   }
   cloudSync.metaRevision=Number(metaRow.revision||0);
   return cloudValidateState(next);
@@ -223,8 +239,8 @@ async function cloudPushSnapshot(snapshot){
   if(!cloudSync.ready||cloudSync.conflict)return;
   const db=cloudSync.db;
   const synced=cloudSync.syncedState||clone(snapshot);
-  for(const seed of SEED.stations){
-    const id=seed.id,nowBundle=cloudStationBundle(snapshot,id),oldBundle=cloudStationBundle(synced,id);
+  for(const item of snapshot.stations){
+    const id=item.id,nowBundle=cloudStationBundle(snapshot,id),oldBundle=cloudStationBundle(synced,id);
     if(cloudSame(nowBundle,oldBundle))continue;
     const rev=cloudSync.stationRevisions.get(id);
     if(!rev)throw Error('站点缺少云端版本号：'+id);
@@ -249,7 +265,7 @@ async function cloudPushSnapshot(snapshot){
   if(!cloudSame(nowMeta,oldMeta)){
     const rev=cloudSync.metaRevision;
     const metaRow=cloudThrowIfError(await db.from(CLOUD_META_TABLE)
-      .update({data:{schemaVersion:CLOUD_SCHEMA_VERSION,stationCount:SEED.stations.length,meta:nowMeta},revision:rev+1,updated_at:new Date().toISOString()},{count:'exact'})
+      .update({data:{schemaVersion:CLOUD_SCHEMA_VERSION,stationCount:snapshot.stations.length,meta:nowMeta},revision:rev+1,updated_at:new Date().toISOString()},{count:'exact'})
       .eq('id',CLOUD_META_ID).eq('revision',rev),'写入云端元数据失败');
     if(typeof metaRow.count==='number'&&metaRow.count!==1){
       const err=Error('云端全局数据已被其他人更新');err.code='CLOUD_CONFLICT';throw err;
@@ -294,6 +310,10 @@ function queueCloudSync(snapshot){
 }
 async function cloudRefresh(force=false){
   if(!cloudSync.ready||cloudSync.conflict||cloudSync.pending||cloudSync.syncing||cloudSync.dirty||cloudSync.writeFailed||cloudSync.refreshing)return false;
+  if(typeof route==='function'&&route().page==='station'&&document.querySelector?.('#baseEdit:not(.hide),#progressEdit:not(.hide),#problemEdit:not(.hide)')){
+    if(force)toast('请先保存或取消当前编辑，再刷新');return false;
+  }
+  if(creatingStation&&!force)return false;
   if(!force&&typeof route==='function'&&route().page==='station'){
     const a=document.activeElement,tag=a&&a.tagName;
     if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
@@ -306,7 +326,7 @@ async function cloudRefresh(force=false){
     const changed=[];
     for(const row of revRes.data||[]){
       const id=String(row.id),remoteRev=Number(row.revision||0),localRev=cloudSync.stationRevisions.get(id);
-      if(localRev&&remoteRev>localRev)changed.push(id);
+      if(!localRev||remoteRev>localRev)changed.push(id);
     }
     let touched=false;
     for(const id of changed){
@@ -314,8 +334,8 @@ async function cloudRefresh(force=false){
       const row=r.data&&r.data[0];if(!row)throw Error('云端缺少站点：'+id);
       const bundle=cloudJson(row.data);
       if(row.id!==id||!bundle.station||bundle.station.id!==id)throw Error('云端站点ID不一致：'+id);
-      const idx=next.stations.findIndex(x=>x.id===id);if(idx<0)throw Error('未知云端站点：'+id);
-      next.stations[idx]=clone(bundle.station);
+      const idx=next.stations.findIndex(x=>x.id===id);
+      if(idx<0)next.stations.push(clone(bundle.station));else next.stations[idx]=clone(bundle.station);
       next.stationUndoHistory=next.stationUndoHistory||{};next.stationRedoHistory=next.stationRedoHistory||{};
       if(Array.isArray(bundle.undo)&&bundle.undo.length)next.stationUndoHistory[id]=clone(bundle.undo);else delete next.stationUndoHistory[id];
       if(Array.isArray(bundle.redo)&&bundle.redo.length)next.stationRedoHistory[id]=clone(bundle.redo);else delete next.stationRedoHistory[id];
@@ -1891,13 +1911,42 @@ function homeRow(s,mode){if(mode==='selection'){const fd=followDays(s),when=fd==
 let homeFocusFilter='all',homeFocusExpanded=false;
 function stationDisplayName(s){return String(s.towerName||'').trim()&&!['暂无','待补充'].includes(s.towerName)?s.towerName:s.demandName}
 function focusItems(){return smartQueue()}
+
+const NEW_STATION_DRAFT_KEY='fxtt-new-station-draft-v1';
+let creatingStation=false;
+function renderNewStation(){
+  navOn('');
+  let draft={};try{draft=JSON.parse(localStorage.getItem(NEW_STATION_DRAFT_KEY)||'{}')}catch(e){}
+  const fields=[['需求站名 *','demandName','text'],['需求订单号','demandOrder','text'],['需求日期','demandDate','date'],['归属地','territory','text'],['选址人','selector','text'],['需求经度','demandLng','text'],['需求纬度','demandLat','text'],['铁塔站名','towerName','text'],['站址编码','siteCode','text'],['建设方式','buildMethod','text']];
+  app.innerHTML=`<div class="title"><button class="btn" data-go="home">← 返回</button><h1>新增站点</h1><span class="tag b">选址中</span></div><form id="newStationForm" class="panel"><div class="pb"><div class="editgrid new-station-grid"><label>运营商 *<select name="operator" required><option value="">请选择</option>${['移动','电信','联通','广电','搬迁','其他'].map(x=>`<option ${draft.input?.operator===x?'selected':''}>${x}</option>`).join('')}</select></label>${fields.map(([label,key,type])=>`<label>${label}<input name="${key}" type="${type}" ${key==='demandName'?'required':''} ${type==='date'?`max="${today()}"`:'maxlength="200"'} ${key.includes('Lng')||key.includes('Lat')?'inputmode="decimal"':''} value="${esc(draft.input?.[key]||'')}"></label>`).join('')}</div><label class="new-wide">最新进展<textarea name="selectionProgress" maxlength="2000">${esc(draft.input?.selectionProgress||'')}</textarea></label><label class="new-wide">建设配置<textarea name="buildConfig" maxlength="2000">${esc(draft.input?.buildConfig||'')}</textarea></label><div id="createError" role="status" aria-live="polite"></div><div class="editactions new-save"><button type="button" class="btn" data-go="home">返回</button><button class="btn primary" type="submit" id="createStation">保存新增站点</button></div></div></form>`;
+  bindCommon();const form=document.getElementById('newStationForm');
+  const stash=()=>{const input=Object.fromEntries(new FormData(form));const previous=draft.input;if(!previous||!cloudSame(input,previous))draft={input};localStorage.setItem(NEW_STATION_DRAFT_KEY,JSON.stringify(draft));return input};
+  form.oninput=()=>{try{stash()}catch(e){document.getElementById('createError').textContent='草稿保存失败：'+e.message}};
+  form.onsubmit=async e=>{
+    e.preventDefault();if(creatingStation)return;
+    const feedback=document.getElementById('createError');
+    if(!cloudSync.ready||cloudSync.conflict||cloudSync.dirty||cloudSync.pending||cloudSync.refreshing){feedback.textContent='请先完成云端同步后再新增站点';return}
+    try{
+      const input=stash();if(!draft.id)draft.id='site-'+crypto.randomUUID();localStorage.setItem(NEW_STATION_DRAFT_KEY,JSON.stringify(draft));
+      creatingStation=true;form.querySelectorAll('input,textarea,select,button').forEach(el=>el.disabled=true);feedback.textContent='正在保存…';
+      const r=await fetch('/api/stations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:draft.id,input}),signal:AbortSignal.timeout(20000)});
+      if(r.status===401)throw Error('登录已过期，请刷新后重新登录，新增草稿已保留');
+      const result=await r.json();if(!r.ok)throw Error(result.error?.message||'新增失败');
+      if(!(await cloudRefresh(true)))throw Error('站点已保存，读取失败。请重试，重复提交不会重复新增');
+      if(localStorage.getItem(NEW_STATION_DRAFT_KEY)===JSON.stringify(draft))localStorage.removeItem(NEW_STATION_DRAFT_KEY);
+      go('station/'+encodeURIComponent(result.id));toast('站点已新增并保存到云端');
+    }catch(error){feedback.textContent=error.message+'；资料已保留'}
+    finally{creatingStation=false;form.querySelectorAll('input,textarea,select,button').forEach(el=>el.disabled=false)}
+  };
+}
+
 function renderHome(){
   navOn('home');
   const counts=cloudModuleCounts(state),all=focusItems(),issues=smartDataIssues();
   const visible=all.filter(x=>homeFocusFilter==='all'||stationModule(x.s)===homeFocusFilter);
   const shown=homeFocusExpanded?visible:visible.slice(0,8);
   const modules=[['selection','选址中'],['difficult','疑难站址'],['pending','待立项'],['building','施工中'],['complete','完工站']];
-  app.innerHTML=`<div class="title dashboard-title"><div><h1>工作台</h1><span class="muted">${state.stations.length} 个站点</span></div><span class="sp"></span><button class="btn primary" id="exportLedger">导出总台账</button><details class="data-tools"><summary class="btn">数据备份</summary><div class="actions"><button class="btn" id="backupData">下载完整备份</button><button class="btn" id="restoreData">恢复备份</button></div></details></div>
+  app.innerHTML=`<div class="title dashboard-title"><div><h1>工作台</h1><span class="muted">${state.stations.length} 个站点</span></div><span class="sp"></span><button class="btn green" data-go="new-station">新增站点</button><button class="btn primary" id="exportLedger">导出总台账</button><details class="data-tools"><summary class="btn">数据备份</summary><div class="actions"><button class="btn" id="backupData">下载完整备份</button><button class="btn" id="restoreData">恢复备份</button></div></details></div>
   <div class="summary lifecycle-summary">${modules.map(([id,label])=>`<button data-go="${id}"><span>${label}</span><b>${counts[id]}</b></button>`).join('')}</div>
   <section class="panel focus-panel"><div class="ph"><b>重点跟进</b><span class="tag o">${all.length}</span><span class="sp"></span><span class="muted">${shown.length} / ${visible.length}</span></div><div class="focus-filters">${[['all','全部'],...modules.filter(x=>x[0]!=='complete')].map(([id,label])=>`<button class="btn ${homeFocusFilter===id?'primary':''}" data-focus-filter="${id}">${label}</button>`).join('')}</div><div class="pb"><div class="hrows">${shown.length?shown.map(smartRow).join(''):'<div class="empty">暂无待跟进事项</div>'}</div>${visible.length>8?`<div class="panel-foot"><button class="btn" id="expandFocus">${homeFocusExpanded?'收起':'查看全部 '+visible.length+' 个站点'}</button></div>`:''}</div></section>
   ${issues.length?`<details class="panel" open><summary class="ph"><b>需核对的数据</b><span class="tag r">${issues.length}</span></summary><div class="pb">${issues.map(smartIssueRow).join('')}</div></details>`:''}`;
@@ -1978,7 +2027,7 @@ function bindModuleSorting(pool,arr,opts){
     };
   });
 }
-function renderList(pool,opts={}){navOn(['selection','difficult','pending','building','complete'].includes(pool)?pool:'');let arr;if(pool==='selection')arr=state.stations.filter(s=>stationModule(s)==='selection');else if(pool==='difficult')arr=state.stations.filter(s=>stationModule(s)==='difficult');else if(pool==='pending')arr=state.stations.filter(s=>stationModule(s)==='pending');else if(pool==='building')arr=state.stations.filter(s=>stationModule(s)==='building');else if(pool==='complete')arr=state.stations.filter(isComplete);else arr=state.stations.slice();const follow=opts.follow||(opts.due?'due':'all');if(pool==='selection'){if(follow==='due')arr=arr.filter(due);if(follow==='recent')arr=arr.filter(s=>!!lastFollow(s)&&followDays(s)>=0&&followDays(s)<3)}else if(pool==='difficult'){if(follow==='due')arr=arr.filter(due);if(follow==='open')arr=arr.filter(s=>s.selectionProblemStatus!=='已解决');if(follow==='done')arr=arr.filter(s=>s.selectionProblemStatus==='已解决')}const buildFilter=opts.buildFilter||(opts.risk?'risk':'all');if(pool==='building'){if(buildFilter==='risk')arr=arr.filter(risk);if(buildFilter==='nodate')arr=arr.filter(s=>!s.establishDate);if(buildFilter==='active')arr=arr.filter(s=>!!s.establishDate)}const q=(opts.q||'').trim().toLowerCase();if(q)arr=arr.filter(s=>[s.demandName,s.towerName,s.demandOrder,s.establishRef,s.siteCode,s.buildMethod,s.territory,s.selector,s.selectionProgress,s.selectionProblem,s.sourceRemark,s.pendingEstablishProgress,s.constructionProblemReason,s.currentSituation].join(' ').toLowerCase().includes(q));if(pool==='selection')arr.sort((a,b)=>Number(!!a.selectionHold)-Number(!!b.selectionHold));if(pool==='building')arr.sort((a,b)=>constructionPriority(a)-constructionPriority(b)||((a.establishDate?scheduleMeta(a).remain:999)??999)-((b.establishDate?scheduleMeta(b).remain:999)??999));if(SORT_MODULES.includes(pool))arr=orderModuleCards(pool,arr);listMode={pool,due:follow==='due',risk:buildFilter==='risk',q:q,follow,buildFilter};const title=pool==='selection'?'选址中':pool==='difficult'?'疑难站址':pool==='pending'?'待立项':pool==='building'?'施工中':pool==='complete'?'完工站':'搜索结果';const filters=pool==='selection'?`<select id="fFollow"><option value="all" ${follow==='all'?'selected':''}>全部进展</option><option value="due" ${follow==='due'?'selected':''}>超过3天未更新</option><option value="recent" ${follow==='recent'?'selected':''}>最近3天已更新</option></select>`:pool==='difficult'?`<select id="fFollow"><option value="all" ${follow==='all'?'selected':''}>全部问题状态</option><option value="due" ${follow==='due'?'selected':''}>超过3天未更新</option><option value="open" ${follow==='open'?'selected':''}>问题未解决</option><option value="done" ${follow==='done'?'selected':''}>问题已解决</option></select>`:pool==='building'?`<select id="fBuild"><option value="all" ${buildFilter==='all'?'selected':''}>全部施工站</option><option value="risk" ${buildFilter==='risk'?'selected':''}>施工问题/节点提醒</option><option value="nodate" ${buildFilter==='nodate'?'selected':''}>待补立项日期</option><option value="active" ${buildFilter==='active'?'selected':''}>已启动48天工期</option></select>`:'';const hint='';app.innerHTML=`<div class="title"><h1>${title}</h1><span class="muted">${arr.length} 个站</span>${hint}</div><div class="filters">${filters}<span class="sp"></span>${SORT_MODULES.includes(pool)?'<button class="btn" id="resetModuleOrder" title="恢复本模块默认排序">恢复默认排序</button>':''}<button class="btn" id="exportBtn">导出当前结果</button></div><div class="panel"><div class="pb"><div class="rows">${arr.length?arr.map(s=>row(s,pool==='complete'?'complete':(pool==='pending'||pool==='building')?'after':(isComplete(s)?'complete':isSelection(s)?'selection':'after'))).join(''):'<div class="empty">没有符合条件的站点。</div>'}</div></div></div>`;bindCommon();const ff=document.getElementById('fFollow');if(ff)ff.onchange=()=>renderList(pool,{follow:ff.value});const fb=document.getElementById('fBuild');if(fb)fb.onchange=()=>renderList('building',{buildFilter:fb.value});document.getElementById('exportBtn').onclick=()=>exportXls(arr,pool,title);bindModuleSorting(pool,arr,{...opts,follow,buildFilter,q})}
+function renderList(pool,opts={}){navOn(['selection','difficult','pending','building','complete'].includes(pool)?pool:'');let arr;if(pool==='selection')arr=state.stations.filter(s=>stationModule(s)==='selection');else if(pool==='difficult')arr=state.stations.filter(s=>stationModule(s)==='difficult');else if(pool==='pending')arr=state.stations.filter(s=>stationModule(s)==='pending');else if(pool==='building')arr=state.stations.filter(s=>stationModule(s)==='building');else if(pool==='complete')arr=state.stations.filter(isComplete);else arr=state.stations.slice();const follow=opts.follow||(opts.due?'due':'all');if(pool==='selection'){if(follow==='due')arr=arr.filter(due);if(follow==='recent')arr=arr.filter(s=>!!lastFollow(s)&&followDays(s)>=0&&followDays(s)<3)}else if(pool==='difficult'){if(follow==='due')arr=arr.filter(due);if(follow==='open')arr=arr.filter(s=>s.selectionProblemStatus!=='已解决');if(follow==='done')arr=arr.filter(s=>s.selectionProblemStatus==='已解决')}const buildFilter=opts.buildFilter||(opts.risk?'risk':'all');if(pool==='building'){if(buildFilter==='risk')arr=arr.filter(risk);if(buildFilter==='nodate')arr=arr.filter(s=>!s.establishDate);if(buildFilter==='active')arr=arr.filter(s=>!!s.establishDate)}const q=(opts.q||'').trim().toLowerCase();if(q)arr=arr.filter(s=>[s.demandName,s.towerName,s.demandOrder,s.establishRef,s.siteCode,s.buildMethod,s.territory,s.selector,s.selectionProgress,s.selectionProblem,s.sourceRemark,s.pendingEstablishProgress,s.constructionProblemReason,s.currentSituation].join(' ').toLowerCase().includes(q));if(pool==='selection')arr.sort((a,b)=>Number(!!a.selectionHold)-Number(!!b.selectionHold));if(pool==='building')arr.sort((a,b)=>constructionPriority(a)-constructionPriority(b)||((a.establishDate?scheduleMeta(a).remain:999)??999)-((b.establishDate?scheduleMeta(b).remain:999)??999));if(SORT_MODULES.includes(pool))arr=orderModuleCards(pool,arr);listMode={pool,due:follow==='due',risk:buildFilter==='risk',q:q,follow,buildFilter};const title=pool==='selection'?'选址中':pool==='difficult'?'疑难站址':pool==='pending'?'待立项':pool==='building'?'施工中':pool==='complete'?'完工站':'搜索结果';const filters=pool==='selection'?`<select id="fFollow"><option value="all" ${follow==='all'?'selected':''}>全部进展</option><option value="due" ${follow==='due'?'selected':''}>超过3天未更新</option><option value="recent" ${follow==='recent'?'selected':''}>最近3天已更新</option></select>`:pool==='difficult'?`<select id="fFollow"><option value="all" ${follow==='all'?'selected':''}>全部问题状态</option><option value="due" ${follow==='due'?'selected':''}>超过3天未更新</option><option value="open" ${follow==='open'?'selected':''}>问题未解决</option><option value="done" ${follow==='done'?'selected':''}>问题已解决</option></select>`:pool==='building'?`<select id="fBuild"><option value="all" ${buildFilter==='all'?'selected':''}>全部施工站</option><option value="risk" ${buildFilter==='risk'?'selected':''}>施工问题/节点提醒</option><option value="nodate" ${buildFilter==='nodate'?'selected':''}>待补立项日期</option><option value="active" ${buildFilter==='active'?'selected':''}>已启动48天工期</option></select>`:'';const hint='';app.innerHTML=`<div class="title"><h1>${title}</h1><span class="muted">${arr.length} 个站</span>${hint}</div><div class="filters">${filters}<button class="btn green" data-go="new-station">新增站点</button><span class="sp"></span>${SORT_MODULES.includes(pool)?'<button class="btn" id="resetModuleOrder" title="恢复本模块默认排序">恢复默认排序</button>':''}<button class="btn" id="exportBtn">导出当前结果</button></div><div class="panel"><div class="pb"><div class="rows">${arr.length?arr.map(s=>row(s,pool==='complete'?'complete':(pool==='pending'||pool==='building')?'after':(isComplete(s)?'complete':isSelection(s)?'selection':'after'))).join(''):'<div class="empty">没有符合条件的站点。</div>'}</div></div></div>`;bindCommon();const ff=document.getElementById('fFollow');if(ff)ff.onchange=()=>renderList(pool,{follow:ff.value});const fb=document.getElementById('fBuild');if(fb)fb.onchange=()=>renderList('building',{buildFilter:fb.value});document.getElementById('exportBtn').onclick=()=>exportXls(arr,pool,title);bindModuleSorting(pool,arr,{...opts,follow,buildFilter,q})}
 function renderCustomList(title,arr,mode){app.innerHTML=`<div class="title"><h1>${title}</h1><span class="muted">${arr.length} 个站</span></div><div class="filters"><button class="btn" onclick="history.back()">返回</button><span class="sp"></span><button class="btn" id="exportBtn">导出当前结果</button></div><div class="panel"><div class="pb"><div class="rows">${arr.length?arr.map(s=>row(s,mode)).join(''):'<div class="empty">没有符合条件的站点。</div>'}</div></div></div>`;bindCommon();document.getElementById('exportBtn').onclick=()=>exportXls(arr,mode,title)}
 function baseInfo(s){const xs=[['运营商',s.operator],['需求站名',s.demandName],['铁塔站名',s.towerName||'暂无'],['需求订单号',s.demandOrder],['需求日期',s.demandDate],['需求经度',s.demandLng],['需求纬度',s.demandLat],['选址人',s.selector],['归属地',s.territory],['项目编码',s.establishRef||'待补充'],['站址编码',s.siteCode||'待补充'],['站址经度',s.siteLng??'待补充'],['站址纬度',s.siteLat??'待补充'],['建设方式',s.buildMethod||'待补充']];return `<div class="base">${xs.map(([k,v])=>`<div><div class="lab">${k}</div><div class="val">${esc(v||'待补充')}</div></div>`).join('')}</div>${s.buildConfig?`<div style="margin-top:7px;padding-top:6px;border-top:1px solid #edf0f4"><div class="lab">配置</div><div class="val" style="font-weight:500">${esc(s.buildConfig)}</div></div>`:''}`}
 function baseEditHtml(s){const fs=[['运营商','operator',s.operator,'text'],['需求站名','demandName',s.demandName,'text'],['铁塔站名','towerName',s.towerName,'text'],['需求订单号','demandOrder',s.demandOrder,'text'],['需求日期','demandDate',s.demandDate,'text'],['需求经度','demandLng',s.demandLng,'text'],['需求纬度','demandLat',s.demandLat,'text'],['选址人','selector',s.selector,'text'],['归属地','territory',s.territory,'text'],['项目编码','establishRef',s.establishRef,'text'],['站址编码','siteCode',s.siteCode,'text'],['站址经度','siteLng',s.siteLng,'text'],['站址纬度','siteLat',s.siteLat,'text'],['建设方式','buildMethod',s.buildMethod,'text']];return `<div id="baseEdit" class="editbox hide"><div class="editgrid">${fs.map(([n,k,v,t])=>`<label><div class="lab">${n}</div><input id="be_${k}" type="${t}" value="${esc(v||'')}"></label>`).join('')}</div><label style="display:block;margin-top:7px"><div class="lab">配置</div><textarea id="be_buildConfig">${esc(s.buildConfig||'')}</textarea></label><div class="editactions"><button class="btn" id="cancelBase">取消</button><button class="btn primary" id="saveBase">保存基础信息</button></div></div>`}
@@ -2350,7 +2399,7 @@ function renderDailyTools(){
 function validateBackup(text){
   const envelope=JSON.parse(text);
   if(!envelope||envelope.format!=='feixi-full-backup'||envelope.version!==1)throw Error('不是支持的肥西完整备份文件');
-  const data=envelope.data,ids=new Set(SEED.stations.map(s=>s.id));
+  const data=envelope.data,ids=new Set(state.stations.map(s=>s.id));
   if(!data||typeof data!=='object'||!Array.isArray(data.stations)||data.stations.length!==ids.size)throw Error('备份必须包含完整站点底册');
   for(const s of data.stations){
     if(!s||typeof s!=='object'||Array.isArray(s)||!ids.delete(s.id))throw Error('备份站点ID缺失、重复或不属于当前底册');
@@ -2373,7 +2422,7 @@ function previewBackup(text){
   for(const k of new Set([...Object.keys(state),...Object.keys(data)]))if(k!=='stations'&&JSON.stringify(state[k])!==JSON.stringify(data[k]))changes.push({name:'全局设置',field:k,before:state[k],after:data[k]});
   pendingRestore={data,snapshot:storageSnapshot};
   const box=document.getElementById('restorePreview');box.classList.remove('hide');
-  box.innerHTML='<div class="alert"><b>恢复完整备份：'+SEED.stations.length+'站，'+changes.length+'项字段差异</b><p>确认后以备份完整替换当前数据；恢复前会保留当前数据副本。未保存的编辑请先保存。</p><details open><summary>查看差异</summary><div style="max-height:320px;overflow:auto;overflow-wrap:anywhere">'+changes.map(x=>'<p><b>'+esc(x.name)+' · '+esc(x.field)+'</b><br>当前：'+esc(JSON.stringify(x.before)??'无')+'<br>备份：'+esc(JSON.stringify(x.after)??'无')+'</p>').join('')+'</div></details><button class="btn primary" id="confirmRestore">确认恢复</button> <button class="btn" id="cancelRestore">取消</button></div>';
+  box.innerHTML='<div class="alert"><b>恢复完整备份：'+data.stations.length+'站，'+changes.length+'项字段差异</b><p>确认后以备份完整替换当前数据；恢复前会保留当前数据副本。未保存的编辑请先保存。</p><details open><summary>查看差异</summary><div style="max-height:320px;overflow:auto;overflow-wrap:anywhere">'+changes.map(x=>'<p><b>'+esc(x.name)+' · '+esc(x.field)+'</b><br>当前：'+esc(JSON.stringify(x.before)??'无')+'<br>备份：'+esc(JSON.stringify(x.after)??'无')+'</p>').join('')+'</div></details><button class="btn primary" id="confirmRestore">确认恢复</button> <button class="btn" id="cancelRestore">取消</button></div>';
   document.getElementById('cancelRestore').onclick=()=>{pendingRestore=null;box.classList.add('hide')};
   document.getElementById('confirmRestore').onclick=()=>{try{restoreBackup();box.classList.add('hide');render()}catch(e){alert(e.message)}};
 }
@@ -2399,7 +2448,7 @@ function initDailyTools(){
   window.addEventListener('focus',refreshDay);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDay()});
 }
-function render(){if(moduleDrag)return;try{if(!state.stations.length){app.innerHTML='<div class="panel"><div class="empty"><b>数据未加载</b><p>请连接云端后查看站点。</p><a href="https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/">打开线上系统</a></div></div>';return}const r=route();if(r.page==='home')renderHome();else if(r.page==='selection')renderList('selection');else if(r.page==='difficult')renderList('difficult');else if(r.page==='pending')renderList('pending');else if(r.page==='building')renderList('building');else if(r.page==='after')renderList('building');else if(r.page==='complete')renderList('complete');else if(r.page==='schedule')renderList('building');else if(r.page.startsWith('calendar'))renderCalendar();else if(r.page==='station')renderStation(r.id);else if(r.page==='search')renderList('all',{q:r.q});else renderHome();renderDailyTools();cloudProtectControls()}catch(e){document.getElementById('app').innerHTML='<div class="err"><b>页面加载失败</b><br>'+esc(e&&e.message||e)+'</div>';console.error(e)}}
+function render(){if(moduleDrag)return;try{if(!state.stations.length){app.innerHTML='<div class="panel"><div class="empty"><b>数据未加载</b><p>请连接云端后查看站点。</p><a href="https://zsj1314-d9ger6ak4a25a8717-1496070976.tcloudbaseapp.com/">打开线上系统</a></div></div>';return}const r=route();if(r.page==='new-station')renderNewStation();else if(r.page==='home')renderHome();else if(r.page==='selection')renderList('selection');else if(r.page==='difficult')renderList('difficult');else if(r.page==='pending')renderList('pending');else if(r.page==='building')renderList('building');else if(r.page==='after')renderList('building');else if(r.page==='complete')renderList('complete');else if(r.page==='schedule')renderList('building');else if(r.page.startsWith('calendar'))renderCalendar();else if(r.page==='station')renderStation(r.id);else if(r.page==='search')renderList('all',{q:r.q});else renderHome();renderDailyTools();cloudProtectControls()}catch(e){document.getElementById('app').innerHTML='<div class="err"><b>页面加载失败</b><br>'+esc(e&&e.message||e)+'</div>';console.error(e)}}
 async function boot(){
   try{load()}catch(e){document.getElementById('app').innerHTML='<div class="err">'+esc(e.message)+'</div>';throw e}
   document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>go(b.dataset.page));

@@ -1,5 +1,13 @@
 # 审计回归
 
+## Cloudflare 新增站点与设备验证（2026-09-28）
+
+- 先 `node tools/build-cloudflare-pages.cjs`，分别启动 `npx wrangler dev --config cloudflare/wrangler.jsonc --port 8787` 和 `npx wrangler dev --config cloudflare/wrangler.jsonc --port 8788 --local-protocol https`。本地 D1 使用既有隔离副本，密钥放被忽略的 `.dev.vars` 和 `secrets.local.json`。
+- `node tests/create-station-local.cjs`：真实本地D1，必填/日期/坐标校验、并发重试和查重、31个新增请求、超过100站的真实adapter分页、元数据计数及新站修改。只清理本次测试记录。
+- `node tests/fxtt-devices-local.cjs`：Chrome独立会话、手机/平板/桌面、真实触摸事件排序、丢失回复后的幂等重试、草稿刷新、断网恢复、搜索、导出与备份、编辑时刷新保护；WebKit通过本地HTTPS验证登录和新增持久化。仅本地开发自签证书上下文使用 ignoreHTTPSErrors。
+- `node tests/fxtt-online-readonly.cjs`：固定Pages生产入口，仅登录、SELECT、导航和导出；Chrome明确关闭代理，覆盖1440/768/390/320宽度及WebKit390宽度。验证76站原始业务JSON/历史/版本不变。此基线比对仅适用于本次发布验收，后续真实新增应更新验收快照，不能限制实际生产站数。
+- 截图、工作簿和数据快照保存在被忽略的 `audit-evidence/`。移动端模拟不是实体Android/iPhone，也不是独立运营商蜂窝网络验收。
+
 ## CloudBase 共享版（2026-09-26 起）
 
 - `node tests/cloudbase-sync.cjs`：直接执行 `cloudbase-dist/index.html` 的真实同步代码，在隔离 adapter 中验证失败保护、刷新竞态、恢复和 CAS 冲突。无需凭据，不连接生产库。GitHub Actions 同步执行。

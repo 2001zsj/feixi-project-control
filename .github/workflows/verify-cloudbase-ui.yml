@@ -11,6 +11,8 @@ on:
       - 'tests/consistency-rules.cjs'
       - 'tests/ledger-export.cjs'
       - 'tools/station-rules.cjs'
+      - 'cloudflare/**'
+      - 'tools/build-cloudflare*.cjs'
       - '.github/workflows/apply-cloudbase-updates.yml'
       - '.github/workflows/verify-cloudbase-ui.yml'
   workflow_dispatch:
@@ -30,3 +32,6 @@ jobs:
       - run: node tests/focus-rules.cjs
       - run: node tests/consistency-rules.cjs
       - run: node tests/ledger-export.cjs
+      - run: node tools/build-cloudflare-pages.cjs
+      - run: node --check cloudflare/worker.mjs
+      - run: node --check cloudflare/create-station.mjs

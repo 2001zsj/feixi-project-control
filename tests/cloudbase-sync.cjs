@@ -6,7 +6,7 @@ const results=[];
 function boot(){
  const storage=new Map(),els=new Map();
  const c=vm.createContext({console,Date,Map,Set,URL,URLSearchParams,setTimeout,clearTimeout,setInterval:()=>1,
-  alert(){},confirm:()=>true,window:{addEventListener(){}},document:{activeElement:null,hidden:false,addEventListener(){},querySelectorAll(){return []},getElementById(id){if(!els.has(id))els.set(id,{textContent:'',className:'',style:{},querySelectorAll:()=>[]});return els.get(id)}},
+  alert(){},confirm:()=>true,location:{hash:'#home'},window:{addEventListener(){}},document:{activeElement:null,hidden:false,addEventListener(){},querySelectorAll(){return []},getElementById(id){if(!els.has(id))els.set(id,{textContent:'',className:'',style:{},querySelectorAll:()=>[]});return els.get(id)}},
   localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}});
  vm.runInContext(code,c);
  c.run=s=>vm.runInContext(s,c);c.storage=storage;c.els=els;

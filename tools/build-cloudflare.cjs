@@ -5,10 +5,11 @@ function replace(a,b){if(!html.includes(a))throw Error('Build marker missing: '+
 const start=html.indexOf('// SHARED_STATION_RULES_BEGIN'),end=html.indexOf('// SHARED_STATION_RULES_END');
 fs.writeFileSync(path.join(root,'cloudflare/generated-rules.mjs'),html.slice(start,end)+'\nexport {assertStationChange};\n');
 replace('https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js','/adapter.js');
-replace("const CLOUD_RELEASE='2026-09-27-ledger-style-1';","const CLOUD_RELEASE='2026-09-28-cloudflare-1';");
+replace("const CLOUD_RELEASE='2026-09-27-ledger-style-1';","const CLOUD_RELEASE='2026-09-28-create-mobile-1';");
 replace('if(!cloudSync.refreshTimer)cloudSync.refreshTimer=setInterval(cloudRefresh,CLOUD_POLL_MS);',`// No database polling while the page is idle.
     let lastCheck=Date.now();
-    const checkOnReturn=()=>{if(!document.hidden&&Date.now()-lastCheck>60000){lastCheck=Date.now();cloudRefresh()}};`);
+    const checkOnReturn=()=>{if(!document.hidden&&Date.now()-lastCheck>5000){lastCheck=Date.now();cloudRefresh()}};
+    window.addEventListener('online',()=>{if(cloudSync.dirty&&!cloudSync.conflict)cloudRetrySync();else checkOnReturn()});`);
 replace("window.addEventListener('focus',()=>cloudRefresh(true));","window.addEventListener('focus',checkOnReturn);");
 replace("document.addEventListener('visibilitychange',()=>{if(!document.hidden)cloudRefresh()});","document.addEventListener('visibilitychange',checkOnReturn);");
 // Database initialization is a controlled migration, never a browser action.

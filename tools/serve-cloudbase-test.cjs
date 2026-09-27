@@ -20,7 +20,10 @@ http.createServer(async(req,res)=>{
    if(q.fields!=='*'){const keys=q.fields.split(',');rows=rows.map(r=>Object.fromEntries(keys.map(k=>[k,r[k]])))}
    res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({data:rows}));
   }
-  const html=fs.readFileSync(path.join(__dirname,'../cloudbase-dist/index.html'),'utf8').replace('https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js','/test-sdk.js');
+  const html=fs.readFileSync(path.join(__dirname,'../cloudbase-dist/index.html'),'utf8')
+   .replace('https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js','/test-sdk.js')
+   .replaceAll("'云端已同步'","'快照预览'")
+   .replace('<div class="top">','<div style="padding:6px 12px;background:#fff3d5;color:#76500c;text-align:center;font:12px Microsoft YaHei">布局预览 · 操作仅影响本机快照</div><div class="top">');
   res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);
  }catch(e){res.statusCode=500;res.end(JSON.stringify({error:{message:e.message}}))}
 }).listen(8767,'127.0.0.1',()=>console.log('Isolated fixture UI: http://127.0.0.1:8767'));

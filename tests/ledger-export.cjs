@@ -43,6 +43,15 @@ const fixtures=[
   assert.ok(files['xl/worksheets/sheet2.xml'].includes('=SUM(1,2)&lt;&amp;'));
   assert.ok(!files['xl/worksheets/sheet2.xml'].includes('<f>'));
   assert.ok(files['xl/worksheets/sheet6.xml'].includes('装塔日期'));
+  const overview=files['xl/worksheets/sheet1.xml'];
+  const header=overview.match(/<row r="3"[\s\S]*?<\/row>/)[0];
+  assert.ok(header.indexOf('需求站名')<header.indexOf('所属模块'));
+  assert.ok(header.indexOf('当前进展/问题')<header.indexOf('需求订单号'));
+  assert.ok(header.includes('s="19"'));assert.ok(header.includes('s="20"'));
+  assert.ok(overview.includes('scale="80"'));assert.ok(overview.includes('<tabColor'));
+  assert.ok(wb.includes('!$A:$B'));
+  const multiline=run(`exportXls([{demandName:'长文本测试',selectionProgress:'第一行\\n第二行\\n第三行\\n第四行'}],'selection','',true).sheet`);
+  assert.ok(Number(multiline.match(/<row r="4" ht="([\d.]+)"/)[1])>=76);
   assert.equal(download,'肥西站点总台账_2026-09-27.xlsx');
   run(`exportXls([],'ledger','总台账')`);
   const empty=unzip(Buffer.from(await blob.arrayBuffer()));

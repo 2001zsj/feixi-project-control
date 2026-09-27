@@ -37,7 +37,7 @@ const CLOUD_META_TABLE='feixi_meta';
 const CLOUD_META_ID='main';
 const CLOUD_SCHEMA_VERSION=2;
 const CLOUD_POLL_MS=15000;
-const CLOUD_RELEASE='2026-09-27-ledger-1';
+const CLOUD_RELEASE='2026-09-27-ledger-style-1';
 const CLOUD_OUTBOX_KEY='feixi-v072-state:cloud-outbox-v1';
 const CLOUD_INITIAL_COUNTS={selection:9,difficult:18,pending:10,building:12,complete:27};
 let state;
@@ -2144,10 +2144,20 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
     {h:'当前状态',g:s=>isComplete(s)?'整站完成':isSelection(s)?(s.isDifficultSite?(s.selectionProblemStatus||'未解决'):(s.selectionHold?'暂时保留':s.followupEnabled===false?'暂时无需关注':due(s)?'需问进度':'正常跟进')):(!s.establishRef?pendingEstablishText(s):!s.establishDate?'已立项待录日期':scheduleMeta(s).stage),w:24,wrap:true,center:true,status:true}
   ];
   let extra=module==='selection'?normalSelCols:module==='difficult'?difficultSelCols:module==='pending'?pendingCols:module==='building'||module==='after'?afterCols:module==='complete'?completeCols:mixedCols;
-  const colsDef=ledger?mixedCols.concat(B,[
+  if(module==='building'||module==='after'){
+    const priority=['当前主线','工期状态','问题说明','节点提醒','是否暂停','暂停原因','剩余工作日','48工作日截止'];
+    extra=[...priority.map(h=>afterCols.find(c=>c.h===h)),...afterCols.filter(c=>!priority.includes(c.h))];
+  }
+  const overviewCols=mixedCols.concat([
     {h:'当前进展/问题',g:s=>stationModule(s)==='difficult'?(s.selectionProblem||s.sourceRemark||''):stationModule(s)==='selection'?latestSelectionProgress(s):stationModule(s)==='pending'?pendingEstablishText(s):hasConstructionProblem(s)?constructionProblemReason(s):(s.currentSituation||''),w:36,wrap:true},
     {h:'最近更新',g:s=>fmtDT(s.lastUpdate||''),w:16,center:true}
-  ]):B.concat(extra);
+  ]);
+  const front=['需求站名','运营商','归属地'];
+  const colsDef=[...front.map(h=>B.find(c=>c.h===h)),...(ledger?overviewCols:extra),...B.filter(c=>!front.includes(c.h))].map(col=>({
+    ...col,group:front.includes(col.h)?'identity':B.includes(col)?'base':'progress',
+    w:col.h.includes('更新')?22:col.type==='date'?13:col.type==='coord'?15:col.h.includes('编码')||col.h==='需求订单号'?25:col.h.includes('站名')?32:col.wrap?Math.max(col.w,32):Math.max(col.w,12),
+    wrap:col.wrap||col.status||col.h==='建设方式'
+  }));
   const rows=arr.map(s=>colsDef.map(col=>col.g(s)));
   const moduleName=module==='selection'?'选址中':module==='difficult'?'疑难站址':module==='pending'?'待立项':module==='building'||module==='after'?'施工中':module==='complete'?'完工站':(title||'站点筛选结果');
   const reportTitle=ledger?'肥西站点总台账':'肥西'+moduleName+'表';
@@ -2190,11 +2200,11 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
     r.forEach((v,i)=>{
       const col=colsDef[i];
       if(!col.wrap)return;
-      const len=String(v??'').replace(/\r?\n/g,'').length;
-      const per=Math.max(10,Math.floor((col.w||12)*1.65));
-      lines=Math.max(lines,Math.ceil(len/per));
+      const per=Math.max(8,(col.w||12)-2);
+      const wrapped=String(v??'').split(/\r?\n/).reduce((n,line)=>n+Math.max(1,Math.ceil([...line].reduce((w,ch)=>w+(ch.charCodeAt(0)>255?2:1),0)/per)),0);
+      lines=Math.max(lines,wrapped);
     });
-    return Math.min(78,Math.max(24,20+(lines-1)*13));
+    return Math.min(409,Math.max(32,12+lines*16));
   };
 
   const widths=colsDef.map(x=>x.w||12);
@@ -2202,22 +2212,22 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
   const lastCol=colName(colsDef.length-1),lastRow=rows.length+3;
   const titleRow='<row r="1" ht="30" customHeight="1"><c r="A1" s="1" t="inlineStr"><is><t>'+xesc(reportTitle)+'</t></is></c></row>';
   const metaRow='<row r="2" ht="22" customHeight="1"><c r="A2" s="2" t="inlineStr"><is><t xml:space="preserve">导出日期：'+today()+'    站点数量：'+rows.length+'    数据范围：'+(ledger||sheetOnly?'全部站点按模块分表':'当前筛选结果')+(ledger?'    '+Object.entries(moduleLabels).map(([key,label])=>label+' '+arr.filter(s=>stationModule(s)===key).length).join(' / '):'')+'</t></is></c></row>';
-  const headRow='<row r="3" ht="30" customHeight="1">'+colsDef.map((col,i)=>'<c r="'+ref(3,i)+'" s="3" t="inlineStr"><is><t>'+xesc(col.h)+'</t></is></c>').join('')+'</row>';
+  const headRow='<row r="3" ht="36" customHeight="1">'+colsDef.map((col,i)=>'<c r="'+ref(3,i)+'" s="'+(col.group==='base'?19:col.group==='progress'?20:3)+'" t="inlineStr"><is><t>'+xesc(col.h)+'</t></is></c>').join('')+'</row>';
   const dataRows=rows.map((r,ri)=>'<row r="'+(ri+4)+'" ht="'+rowHeight(r)+'" customHeight="1">'+r.map((v,i)=>cellXml(v,ri+4,i,ri)).join('')+'</row>').join('');
 
   const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     +'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-    +'<sheetPr><pageSetUpPr fitToPage="1" autoPageBreaks="0"/></sheetPr>'
+    +'<sheetPr><tabColor rgb="'+({selection:'FF3B82F6',difficult:'FFD97706',pending:'FF8B5CF6',building:'FF0891B2',complete:'FF16A34A'}[module]||'FF1E3A5F')+'"/><pageSetUpPr fitToPage="0" autoPageBreaks="1"/></sheetPr>'
     +'<dimension ref="A1:'+lastCol+lastRow+'"/>'
-    +'<sheetViews><sheetView workbookViewId="0" showGridLines="0" zoomScale="90" zoomScaleNormal="90"><pane xSplit="2" ySplit="3" topLeftCell="C4" activePane="bottomRight" state="frozen"/><selection pane="topRight" activeCell="C1" sqref="C1"/><selection pane="bottomLeft" activeCell="A4" sqref="A4"/><selection pane="bottomRight" activeCell="C4" sqref="C4"/></sheetView></sheetViews>'
+    +'<sheetViews><sheetView workbookViewId="0" showGridLines="0" zoomScale="85" zoomScaleNormal="85"><pane xSplit="2" ySplit="3" topLeftCell="C4" activePane="bottomRight" state="frozen"/><selection pane="topRight" activeCell="C1" sqref="C1"/><selection pane="bottomLeft" activeCell="A4" sqref="A4"/><selection pane="bottomRight" activeCell="C4" sqref="C4"/></sheetView></sheetViews>'
     +'<sheetFormatPr defaultRowHeight="18"/>'
     +cols
     +'<sheetData>'+titleRow+metaRow+headRow+dataRows+'</sheetData>'
     +'<autoFilter ref="A3:'+lastCol+lastRow+'"/>'
-    +'<mergeCells count="2"><mergeCell ref="A1:'+lastCol+'1"/><mergeCell ref="A2:'+lastCol+'2"/></mergeCells>'
+    +'<mergeCells count="2"><mergeCell ref="A1:'+colName(Math.min(7,colsDef.length-1))+'1"/><mergeCell ref="A2:'+lastCol+'2"/></mergeCells>'
     +'<printOptions horizontalCentered="1"/>'
     +'<pageMargins left="0.22" right="0.22" top="0.42" bottom="0.42" header="0.18" footer="0.22"/>'
-    +'<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0" horizontalDpi="300" verticalDpi="300"/>'
+    +'<pageSetup paperSize="8" orientation="landscape" scale="80" horizontalDpi="300" verticalDpi="300"/>'
     +'<headerFooter><oddFooter>&amp;C第 &amp;P 页 / 共 &amp;N 页</oddFooter></headerFooter>'
     +'</worksheet>';
 
@@ -2233,27 +2243,29 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
     +'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
     +'<numFmts count="2"><numFmt numFmtId="164" formatCode="0.00000000"/><numFmt numFmtId="165" formatCode="yyyy-mm-dd"/></numFmts>'
     +'<fonts count="5">'
-    +'<font><sz val="9"/><name val="Microsoft YaHei"/><family val="2"/><charset val="134"/></font>'
+    +'<font><sz val="10"/><name val="Microsoft YaHei"/><family val="2"/><charset val="134"/></font>'
     +'<font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Microsoft YaHei"/><family val="2"/><charset val="134"/></font>'
-    +'<font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Microsoft YaHei"/><family val="2"/><charset val="134"/></font>'
-    +'<font><sz val="9"/><color rgb="FF44546A"/><name val="Microsoft YaHei"/><family val="2"/><charset val="134"/></font>'
-    +'<font><b/><sz val="9"/><name val="Microsoft YaHei"/><family val="2"/><charset val="134"/></font>'
+    +'<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Microsoft YaHei"/><family val="2"/><charset val="134"/></font>'
+    +'<font><sz val="10"/><color rgb="FF44546A"/><name val="Microsoft YaHei"/><family val="2"/><charset val="134"/></font>'
+    +'<font><b/><sz val="10"/><name val="Microsoft YaHei"/><family val="2"/><charset val="134"/></font>'
     +'</fonts>'
-    +'<fills count="9">'
+    +'<fills count="11">'
     +'<fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'
-    +'<fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/><bgColor indexed="64"/></patternFill></fill>'
-    +'<fill><patternFill patternType="solid"><fgColor rgb="FFD9EAF7"/><bgColor indexed="64"/></patternFill></fill>'
-    +'<fill><patternFill patternType="solid"><fgColor rgb="FF4472C4"/><bgColor indexed="64"/></patternFill></fill>'
-    +'<fill><patternFill patternType="solid"><fgColor rgb="FFF7FAFC"/><bgColor indexed="64"/></patternFill></fill>'
-    +'<fill><patternFill patternType="solid"><fgColor rgb="FFE2F0D9"/><bgColor indexed="64"/></patternFill></fill>'
-    +'<fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/><bgColor indexed="64"/></patternFill></fill>'
-    +'<fill><patternFill patternType="solid"><fgColor rgb="FFFCE4D6"/><bgColor indexed="64"/></patternFill></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FFF0F5FA"/><bgColor indexed="64"/></patternFill></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FF334E68"/><bgColor indexed="64"/></patternFill></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FFF5F8FC"/><bgColor indexed="64"/></patternFill></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FFE8F5ED"/><bgColor indexed="64"/></patternFill></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FFFFF5DF"/><bgColor indexed="64"/></patternFill></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FFFDECEC"/><bgColor indexed="64"/></patternFill></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FF64748B"/><bgColor indexed="64"/></patternFill></fill>'
+    +'<fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill>'
     +'</fills>'
     +'<borders count="3"><border/><border><left style="thin"><color rgb="FFD9E2F3"/></left><right style="thin"><color rgb="FFD9E2F3"/></right><top style="thin"><color rgb="FFD9E2F3"/></top><bottom style="thin"><color rgb="FFD9E2F3"/></bottom><diagonal/></border><border><left style="thin"><color rgb="FFB4C6E7"/></left><right style="thin"><color rgb="FFB4C6E7"/></right><top style="thin"><color rgb="FFB4C6E7"/></top><bottom style="thin"><color rgb="FFB4C6E7"/></bottom><diagonal/></border></borders>'
     +'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-    +'<cellXfs count="19">'
+    +'<cellXfs count="21">'
     +'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
-    +'<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+    +'<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>'
     +'<xf numFmtId="0" fontId="3" fillId="3" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'
     +'<xf numFmtId="0" fontId="2" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
     +'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'
@@ -2271,13 +2283,14 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
     +'<xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
     +'<xf numFmtId="0" fontId="4" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
     +'<xf numFmtId="0" fontId="4" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+    +[9,10].map(fill=>'<xf numFmtId="0" fontId="2" fillId="'+fill+'" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>').join('')
     +'</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
     +'</styleSheet>';
 
   const xmlHeader='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
   const contentTypes=xmlHeader+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+sheets.map((_,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
   const rootRels=xmlHeader+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
-  const workbook=xmlHeader+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((s,i)=>'<sheet name="'+xesc(s.name.slice(0,31))+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets><definedNames>'+sheets.map((s,i)=>{const r=xesc("'"+s.name.slice(0,31).replace(/'/g,"''")+"'");return '<definedName name="_xlnm.Print_Titles" localSheetId="'+i+'">'+r+'!$1:$3</definedName><definedName name="_xlnm.Print_Area" localSheetId="'+i+'">'+r+'!$A$1:$'+s.lastCol+'$'+s.lastRow+'</definedName>'}).join('')+'</definedNames></workbook>';
+  const workbook=xmlHeader+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((s,i)=>'<sheet name="'+xesc(s.name.slice(0,31))+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets><definedNames>'+sheets.map((s,i)=>{const r=xesc("'"+s.name.slice(0,31).replace(/'/g,"''")+"'");return '<definedName name="_xlnm.Print_Titles" localSheetId="'+i+'">'+r+'!$1:$3,'+r+'!$A:$B</definedName><definedName name="_xlnm.Print_Area" localSheetId="'+i+'">'+r+'!$A$1:$'+s.lastCol+'$'+s.lastRow+'</definedName>'}).join('')+'</definedNames></workbook>';
   const wbRels=xmlHeader+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((_,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')+'<Relationship Id="rId'+(sheets.length+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
 
   const enc=new TextEncoder();

@@ -7,6 +7,15 @@ vm.runInContext(code,c);const run=s=>vm.runInContext(s,c);
 run(`today=()=> '2026-09-27';recordStationUndo=()=>{};save=saveSpy;toast=()=>{};renderStation=()=>{};var st={id:'isolated',establishRef:'code',establishDate:'2026-09-01',entryDate:'2026-09-10',pourDate:'2026-09-15'};`);
 assert.equal(run('scheduleMeta(st).nodeOverdue'),false);assert.ok(run('scheduleMeta(st).historicalDelay.includes("进场")'));
 assert.equal(run('scheduleMeta({...st,pourDate:""}).nodeOverdue'),true);
+// Pouring uses five calendar days after entry; the deadline itself is not overdue.
+run(`var pourCase={establishRef:'code',establishDate:'2026-09-20',entryDate:'2026-09-22'};`);
+assert.equal(run('scheduleMeta(pourCase).pourDue'),'2026-09-27');
+assert.equal(run('scheduleMeta(pourCase).nodeOverdue'),false);
+assert.equal(run('scheduleMeta({...pourCase,entryDate:"2026-09-21"}).nodeOverdue'),true);
+assert.ok(run('scheduleMeta({...pourCase,entryDate:"2026-09-21"}).reason.includes("进场后5天")'));
+assert.equal(run('nodeDeadlineMeta({...pourCase,pourDate:"2026-09-27"}).historicalDelay'),'');
+assert.ok(run('nodeDeadlineMeta({...pourCase,pourDate:"2026-09-28"}).historicalDelay.includes("进场后5天 1天")'));
+assert.equal(run('scheduleMeta({...pourCase,establishRef:""}).pourDue'),'2026-09-27');
 assert.equal(run('mainStage({...st,towerDate:"2026-09-26"})'),'装塔完成，待引电、配套');
 assert.equal(run('scheduleMeta({...st,towerDate:"2026-09-26"}).earlyTower'),true);
 assert.equal(run('mainStage({...st,towerDate:"2026-09-26",powerDate:"2026-09-26",supportDate:"2026-09-26"})'),'专业已完成，待整站确认');

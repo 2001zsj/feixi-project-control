@@ -43,6 +43,26 @@ body{font-size:13px;color:#202d40;background:#f4f6f9}.wrap{padding:16px 20px;max
 }
 @media(max-width:420px){.new-station-grid,.editgrid{grid-template-columns:minmax(0,1fr)}.brand{font-size:13px}.top{column-gap:4px}.top>.tag{font-size:10px}.top>.btn{padding-left:8px;padding-right:8px}.top form[action='/logout'] .btn{padding:6px}}
 
+/* Phone navigation stays fully visible; retain 44px touch targets. */
+@media(max-width:720px){
+ .top{padding:6px 10px;gap:4px 6px}.top .brand{flex:1;font-size:13px}
+ .top>#cloudStatus{order:1;white-space:nowrap}.top>#cloudRefreshNow{order:2;width:44px;padding:0}
+ .top>form[action='/logout']{order:3}.top>form[action='/logout'] .btn{border-color:transparent;background:transparent;color:#bdc8d7;padding:6px}
+ .top>#cloudRetrySync,.top>#cloudInitData{order:3}
+ .top .nav{order:4;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;overflow:visible}
+ .top .nav button{padding:6px 2px;min-width:0;font-size:13px}
+ .top .search{order:5;margin:2px 0 0;gap:6px}.search input{padding:6px 8px}
+ .dashboard-title>div{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+ .dashboard-title .data-tools .btn{font-size:12px;padding:6px 8px}
+ .lifecycle-summary{margin-bottom:12px}.lifecycle-summary button{padding:8px 2px}.lifecycle-summary b{font-size:21px;margin-top:2px}
+ .focus-filters{flex-wrap:wrap;overflow:visible;gap:5px}.focus-filters .btn{flex:1 0 auto;padding:6px 9px;font-size:13px}
+ .focus-panel .hrow{grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;padding:10px}
+ .focus-panel .hrow>div:first-child{grid-column:1/-1;min-width:0;overflow-wrap:anywhere}
+ .focus-panel .hproblem{display:contents}.focus-panel .hproblem .val{grid-column:1/-1;grid-row:2;overflow-wrap:anywhere;line-height:1.55}
+ .focus-panel .hproblem .sub{grid-column:1;grid-row:3;margin:0}
+ .focus-panel .hstatus{grid-column:2;grid-row:3;gap:6px}.focus-panel .hstatus .row-arrow{margin-left:2px}
+ .focus-panel .hrows{gap:8px}
+}
 </style>
 </head><body>
 <div class="top"><div class="brand">肥西站点推进</div><span id="cloudStatus" class="tag">本机</span><button class="btn" id="cloudRefreshNow" title="立即从云端读取最新数据">↻</button><button class="btn" id="cloudRetrySync" style="display:none">重试同步</button><button class="btn" id="cloudInitData" style="display:none">导入云端底册</button><div class="nav"><button data-page="home">工作台</button><button data-page="selection">选址中</button><button data-page="difficult">问题站点</button><button data-page="pending">待立项</button><button data-page="building">施工中</button><button data-page="complete">完工站</button><button data-page="calendar">大陆日历</button></div><form class="search" id="searchForm"><input id="globalSearch" placeholder="搜索站名 / 铁塔站名 / 订单号 / 项目编码 / 站址编码 / 归属地"><button class="btn">搜索</button></form></div>

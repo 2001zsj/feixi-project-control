@@ -33,7 +33,7 @@ const fixtures=[
   const expected=[6,2,1,1,1,1];
   for(let i=1;i<=6;i++){
     const sheet=files[`xl/worksheets/sheet${i}.xml`];
-    assert.equal([...sheet.matchAll(/<row r=/g)].length-3,expected[i-1]);
+    assert.equal([...sheet.matchAll(/<row r=/g)].length-4,expected[i-1]);
     assert.ok(sheet.includes('state="frozen"'));assert.ok(sheet.includes('<autoFilter'));
     assert.ok(files['xl/_rels/workbook.xml.rels'].includes(`Target="worksheets/sheet${i}.xml"`));
     assert.ok(files['[Content_Types].xml'].includes(`/xl/worksheets/sheet${i}.xml`));
@@ -44,14 +44,19 @@ const fixtures=[
   assert.ok(!files['xl/worksheets/sheet2.xml'].includes('<f>'));
   assert.ok(files['xl/worksheets/sheet6.xml'].includes('装塔日期'));
   const overview=files['xl/worksheets/sheet1.xml'];
-  const header=overview.match(/<row r="3"[\s\S]*?<\/row>/)[0];
+  const header=overview.match(/<row r="4"[\s\S]*?<\/row>/)[0];
   assert.ok(header.indexOf('需求站名')<header.indexOf('所属模块'));
-  assert.ok(header.indexOf('当前进展/问题')<header.indexOf('需求订单号'));
-  assert.ok(header.includes('s="19"'));assert.ok(header.includes('s="20"'));
+  assert.ok(header.includes('当前进展/问题'));assert.ok(!header.includes('需求订单号'));
+  assert.equal((header.match(/<c /g)||[]).length,7);
+  assert.ok(files['xl/worksheets/sheet2.xml'].includes('s="19"'));assert.ok(header.includes('s="20"'));
+  assert.ok(overview.includes('ySplit="4"'));assert.ok(overview.includes('<autoFilter ref="A4:'));
+  assert.ok(files['xl/worksheets/sheet2.xml'].includes('基础资料'));
+  assert.ok(files['xl/worksheets/sheet6.xml'].includes('完工日期'));
+  assert.ok(wb.includes('!$1:$4'));assert.ok(overview.includes('&amp;L&amp;A'));
   assert.ok(overview.includes('scale="80"'));assert.ok(overview.includes('<tabColor'));
   assert.ok(wb.includes('!$A:$B'));
   const multiline=run(`exportXls([{demandName:'长文本测试',selectionProgress:'第一行\\n第二行\\n第三行\\n第四行'}],'selection','',true).sheet`);
-  assert.ok(Number(multiline.match(/<row r="4" ht="([\d.]+)"/)[1])>=76);
+  assert.ok(Number(multiline.match(/<row r="5" ht="([\d.]+)"/)[1])>=76);
   assert.equal(download,'肥西站点总台账_2026-09-27.xlsx');
   run(`exportXls([],'ledger','总台账')`);
   const empty=unzip(Buffer.from(await blob.arrayBuffer()));
@@ -64,7 +69,7 @@ const fixtures=[
     run(`exportXls(fixtures,'ledger','总台账')`);
     const data=Buffer.from(await blob.arrayBuffer());
     if(process.argv[3])fs.writeFileSync(process.argv[3],data);
-    const real=unzip(data);const counts=Array.from({length:6},(_,i)=>[...real[`xl/worksheets/sheet${i+1}.xml`].matchAll(/<row r=/g)].length-3);
+    const real=unzip(data);const counts=Array.from({length:6},(_,i)=>[...real[`xl/worksheets/sheet${i+1}.xml`].matchAll(/<row r=/g)].length-4);
     assert.equal(counts[0],c.fixtures.length);assert.equal(counts.slice(1).reduce((a,b)=>a+b,0),counts[0]);
     console.log('Snapshot sheet row counts:',counts);
   }

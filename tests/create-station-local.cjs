@@ -20,7 +20,7 @@ const password=JSON.parse(fs.readFileSync('cloudflare/secrets.local.json')).APP_
  const first=await list();assert.equal(first.data.length,100);assert(first.nextCursor);const second=await list(first.nextCursor);
  const all=[...first.data,...second.data];assert.equal(new Set(all.map(r=>r.id)).size,all.length);
  assert.equal(all.filter(r=>r.data.station.demandName.startsWith(run)).length,31);
- const vm=require('node:vm');const browser={window:{},AbortSignal,fetch:(url,opts)=>fetch(origin+url,{...opts,headers:{...opts.headers,Origin:origin,Cookie:cookie}})};
+ const vm=require('node:vm');const browser={window:{},AbortSignal,AbortController,setTimeout,clearTimeout,fetch:(url,opts)=>fetch(origin+url,{...opts,headers:{...opts.headers,Origin:origin,Cookie:cookie}})};
  vm.runInNewContext(fs.readFileSync('cloudflare/adapter.js','utf8'),browser);
  const loaded=await browser.window.cloudbase.init().rdb().from('feixi_stations').select('id,data,revision').limit(100);
  assert.equal(loaded.data.length,all.length,'real browser adapter traverses every page');

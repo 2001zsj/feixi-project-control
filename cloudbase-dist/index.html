@@ -120,6 +120,40 @@ body{font-size:14px;line-height:1.55;background:#f3f6fa}
  .focus.problem-focus{grid-template-columns:minmax(0,1fr);gap:14px}.problem-focus>div:last-child{padding:12px}.problem{font-size:15px}.hist{padding:9px 0}
 }
 
+
+/* Visual identity: ink navigation, soft canvas, restrained module accents. */
+:root{--ink:#182b49;--blue:#3569e8;--line:#e3eaf3;--muted:#718198;--shadow:0 4px 18px rgba(30,58,94,.045)}
+body{color:var(--ink);background:#f2f5fa;font-family:"Segoe UI","Microsoft YaHei",Arial,sans-serif}
+.top{background:linear-gradient(110deg,#12243f,#1c3558);box-shadow:0 3px 16px #10213c18;border-bottom:1px solid #ffffff12;padding:12px 24px}
+.brand{display:flex;align-items:center;gap:9px;font-size:15px;letter-spacing:.4px}.brand:before{content:'FX';display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#ffffff12;border:1px solid #ffffff24;color:#a9d7ff;font:700 13px "Segoe UI",sans-serif;letter-spacing:0}
+.nav{gap:4px}.nav button{color:#c1cee0;padding:8px 12px;border-radius:8px;transition:background .15s,color .15s}.nav button.on{background:#ffffff16;color:white;box-shadow:inset 0 -2px #7fb8ff}.nav button:hover{background:#ffffff0c}
+.top .search input{border-color:#ffffff20;background:#ffffff0f;color:#fff}.top .search input::placeholder{color:#b8c6d8}.top .search .btn{background:#ffffff15;border-color:#ffffff18;color:white}
+.top>form[action='/logout'] .btn{background:transparent;border-color:transparent;color:#b8c8dd}.top>#cloudRefreshNow{background:#ffffff0f;border-color:#ffffff20;color:white}
+.wrap{padding-top:24px;padding-bottom:28px}.title h1{color:#18304f;letter-spacing:.2px}.dashboard-title{margin-bottom:20px;min-height:44px}.dashboard-title h1{font-size:25px;font-weight:750}
+.btn{border-color:#dbe3ee;color:#465b77;background:#fff;box-shadow:0 1px 2px #18345b05;transition:background .15s,border-color .15s,box-shadow .15s}
+.btn:hover{border-color:#aebfd8;background:#f7faff;box-shadow:0 3px 8px #1d3c6510}.btn.primary{background:#3569e8;border-color:#3569e8;box-shadow:0 3px 8px #3569e822}.btn.green{background:#198c74;border-color:#198c74;box-shadow:0 3px 8px #198c741c}.btn.danger{background:#c95058;border-color:#c95058}
+input,select,textarea{border-color:#dce4ef;background:#fff}input:focus,select:focus,textarea:focus{outline:2px solid #3569e829;outline-offset:1px;border-color:#7094eb}
+.panel{border-color:var(--line);border-radius:13px;box-shadow:var(--shadow)}.ph{background:#fff;border-color:#edf1f6;min-height:48px}.ph>b:before{content:'';display:inline-block;width:3px;height:13px;background:#7296d9;border-radius:3px;margin-right:8px;vertical-align:-1px}.ph b{font-weight:650}
+.lifecycle-summary{gap:14px;margin-bottom:22px}.lifecycle-summary button{--accent:#3977dc;--wash:#f3f7ff;border:1px solid #e1e9f5;border-radius:12px;min-height:100px;padding:20px;background:linear-gradient(120deg,#fff,var(--wash));box-shadow:var(--shadow);position:relative;overflow:hidden}
+.lifecycle-summary button[data-go='difficult']{--accent:#c2832e;--wash:#fff9ed}.lifecycle-summary button[data-go='pending']{--accent:#8b69bc;--wash:#f8f5ff}.lifecycle-summary button[data-go='building']{--accent:#2d8aab;--wash:#effaff}.lifecycle-summary button[data-go='complete']{--accent:#268d75;--wash:#f0fbf7}
+.lifecycle-summary button span{color:#687b92;font-size:13px}.lifecycle-summary button span:before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:7px}.lifecycle-summary b{font-size:32px;font-weight:700;color:var(--accent);line-height:1.1}.lifecycle-summary button:hover{border-color:var(--accent)}
+.focus-filters{padding-top:14px;gap:8px}.focus-filters .btn{border-color:transparent;background:#f0f4fa;box-shadow:none;border-radius:7px;color:#6d7f97}.focus-filters .btn.primary{background:#e8efff;color:#285acb;border-color:#ccdcff}
+.hrow,.row{border-color:#e7edf5;border-radius:10px;background:#fff}.hrow:hover,.row:hover{border-color:#bbcee9;background:#f8fbff}.hrow.problem-row,.row.problem-row{background:#fff8f7;border-color:#f1d4d1;box-shadow:inset 3px 0 #d66060}.hrow .name,.row .name{color:#243f60}.hrow .sub,.row .sub{color:#8491a4;margin-top:4px}.hproblem .val{color:#53677f}.hstatus .row-arrow{color:#9bafc9}
+.tag{font-weight:500;border-radius:6px;padding:2px 8px;background:#f0f3f8;color:#718199}.tag.b{background:#edf3ff;color:#5278bc}.tag.g{background:#eaf7f1;color:#36876c}.tag.o{background:#fff5e5;color:#b2843e}.tag.r{background:#fff0ee;color:#bd6161}
+.module-filters{border-color:var(--line);border-radius:10px;box-shadow:var(--shadow)}.module-list .sort-handle{color:#a7b4c6}.module-list .sort-handle:hover{color:#3569e8}
+.base .lab{color:#8693a5}.base .val{color:#324c6e}.base>div{border-color:#f0f3f8}.base-details .base-tools .btn{background:#f5f8fc;border-color:#e7edf5;color:#627b9a}
+.deadline{background:linear-gradient(105deg,#eef4ff,#f7faff);border:1px solid #e7eef9;border-radius:10px;padding:16px}.daynum{letter-spacing:-.5px;color:#234879}.daynum.red{color:#bc5057}.daynum.orange{color:#a97830}.meter{height:7px;background:#e0e8f5}.meter i{background:linear-gradient(90deg,#5a8be9,#7cabef)}
+.tl{background:#f8fafd;border-color:#e5ebf4;border-radius:9px}.tl.done{background:#f0f9f5;border-color:#d7eee3}.tl.now,.tl.over{background:#fff9ee;border-color:#efdfbd}.tl .n{color:#3b5574}.tl.done .n{color:#438574}.tl.now .n{color:#a77c32}.parallel .box{background:#fafcff;border-color:#e5ebf4;border-radius:8px}
+.nodebar{background:#f6f8fc;border-color:#e9eef6;border-radius:10px}.problem-focus>div:last-child{background:#f3f7fd;border:1px solid #e7edf7}.hist{border-bottom-style:solid;border-color:#f0f3f8}.toast{border-radius:10px;box-shadow:0 5px 20px #12243f30}
+@media(max-width:1200px) and (min-width:721px){.top .nav{justify-content:flex-start}.lifecycle-summary button{padding:16px 12px}.lifecycle-summary b{font-size:28px}}
+@media(max-width:720px){
+ .top{padding:8px 12px}.brand{font-size:13px;gap:6px}.brand:before{width:25px;height:25px;font-size:11px;border-radius:7px}.top .nav{margin:5px 0}.top .nav button{padding:6px 2px;font-size:13px}.top .search input{background:#fff;color:#233c5a;border-color:#fff}.top .search input::placeholder{color:#8896aa}
+ .wrap{padding:16px 12px 24px}.dashboard-title{margin-bottom:14px}.dashboard-title h1{font-size:21px}.dashboard-title>.btn{border-radius:9px}
+ .lifecycle-summary{gap:6px;margin-bottom:16px}.lifecycle-summary button{min-height:82px;padding:10px 2px;border-radius:10px}.lifecycle-summary button span{font-size:10.5px}.lifecycle-summary button span:before{display:none}.lifecycle-summary b{font-size:25px;margin-top:8px}
+ .ph{min-height:46px}.panel{border-radius:11px}.focus-filters{padding-top:12px;gap:5px}.focus-filters .btn{padding:6px 7px;font-size:12px}.focus-panel .hrows{gap:10px}.focus-panel .hrow{padding:12px}.hrow .name{font-size:14px;line-height:1.6}.tag{font-size:10.5px;padding:2px 6px}
+ .deadline{padding:13px}.tl{padding:11px 12px}.station-title .station-heading h1{font-size:19px}.problem-focus>div:last-child{border-radius:10px}
+}
+@media(prefers-reduced-motion:reduce){.btn,.nav button{transition:none}}
 </style>
 </head><body>
 <div class="top"><div class="brand">肥西站点推进</div><span id="cloudStatus" class="tag">本机</span><button class="btn" id="cloudRefreshNow" title="立即从云端读取最新数据">↻</button><button class="btn" id="cloudRetrySync" style="display:none">重试同步</button><button class="btn" id="cloudInitData" style="display:none">导入云端底册</button><div class="nav"><button data-page="home">工作台</button><button data-page="selection">选址中</button><button data-page="difficult">问题站点</button><button data-page="pending">待立项</button><button data-page="building">施工中</button><button data-page="complete">完工站</button><button data-page="calendar">大陆日历</button></div><form class="search" id="searchForm"><input id="globalSearch" placeholder="搜索站名、编号或归属地" aria-label="搜索站名、铁塔站名、订单号、项目编码、站址编码或归属地"><button class="btn">搜索</button></form></div>

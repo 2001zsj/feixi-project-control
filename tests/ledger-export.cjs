@@ -26,7 +26,7 @@ const fixtures=[
   {id:'c',completeConfirmed:true,towerDate:'2026-09-03'}
 ];
 (async()=>{
-  c.fixtures=fixtures;run(`saveModuleOrder('selection',['b','a']);exportXls(fixtures,'ledger','总台账')`);
+  c.fixtures=fixtures;run(`state={stations:fixtures,moduleOrders:{selection:['b','a']}};exportXls(fixtures,'ledger','总台账')`);
   const files=unzip(Buffer.from(await blob.arrayBuffer()));
   const wb=files['xl/workbook.xml'];
   for(const name of ['总览','选址中','问题站点','待立项','施工中','完工站'])assert.ok(wb.includes('name="'+name+'"'));

@@ -7,6 +7,7 @@ on:
       - 'tests/cloudbase-sync.cjs'
       - 'tests/module-order.cjs'
       - 'tests/status-rules.cjs'
+      - 'tests/construction-workdays.cjs'
       - 'tests/focus-rules.cjs'
       - 'tests/consistency-rules.cjs'
       - 'tests/ledger-export.cjs'
@@ -30,6 +31,7 @@ jobs:
       - run: node tests/cloudbase-sync.cjs
       - run: node tests/module-order.cjs
       - run: node tests/status-rules.cjs
+      - run: node tests/construction-workdays.cjs
       - run: node tests/focus-rules.cjs
       - run: node tests/consistency-rules.cjs
       - run: node tests/ledger-export.cjs

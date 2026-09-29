@@ -194,6 +194,17 @@ input,select,textarea{border-color:#dce4ef;background:#fff}input:focus,select:fo
 .row.selection-site-card{grid-template-columns:minmax(220px,1fr) minmax(0,1.6fr) minmax(150px,.6fr) 16px;gap:16px}
 .node-deadline{font-size:12px;color:#496a98;margin-top:3px}
 @media(max-width:720px){.module-list .row.selection-site-card{grid-template-columns:minmax(0,1fr) 16px;gap:5px}.node-deadline{font-size:12px}}
+
+/* Content resilience, tablet touch controls and short landscape viewports. */
+.name,.station-heading,.problem,.hproblem,.problem-followup,.ph b{min-width:0;overflow-wrap:anywhere}
+.editbox textarea{display:block;width:100%;min-height:90px}.editgrid>label,.new-station-grid>label{min-width:0}
+.editgrid input,.editgrid select{max-width:100%;min-width:0}.station-title h1{overflow-wrap:anywhere}
+.wrap{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+@media(min-width:721px){.wrap{padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}}
+@media(min-width:721px) and (max-width:900px){.editgrid,.new-station-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.search{min-width:0!important}.ph{flex-wrap:wrap}}
+@media(pointer:coarse){.btn,.nav button,input,select,summary.btn{min-height:44px}.sort-handle{width:44px;height:44px}.module-sort-row{padding-left:52px}.module-list .module-sort-row{padding-left:52px}.editgrid input,.new-station-grid input,.new-station-grid select,textarea{font-size:16px}}
+@media(pointer:coarse) and (max-width:720px){.module-list .module-sort-row{padding-left:10px}}
+@media(max-height:500px){.top{position:relative}.new-save{position:static}.toast{max-height:35vh;overflow:auto}}
 </style>
 </head><body>
 <div class="top"><div class="brand">肥西站点推进</div><span id="cloudStatus" class="tag">本机</span><button class="btn" id="cloudRefreshNow" title="立即从云端读取最新数据">↻</button><button class="btn" id="cloudRetrySync" style="display:none">重试同步</button><button class="btn" id="cloudInitData" style="display:none">导入云端底册</button><div class="nav"><button data-page="home">工作台</button><button data-page="selection">选址中</button><button data-page="difficult">问题站点</button><button data-page="pending">待立项</button><button data-page="building">施工中</button><button data-page="complete">完工站</button><button data-page="calendar">大陆日历</button></div><form class="search" id="searchForm"><input id="globalSearch" placeholder="搜索站名、编号或归属地" aria-label="搜索站名、铁塔站名、订单号、项目编码、站址编码或归属地"><button class="btn">搜索</button></form></div>

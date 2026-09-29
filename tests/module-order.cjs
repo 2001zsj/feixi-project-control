@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const html=fs.readFileSync('cloudbase-dist/index.html','utf8');
 const code=html.slice(html.indexOf('const MODULE_ORDER_KEY='),html.indexOf('function defaultModuleCards('));
-const storage=new Map();const c=vm.createContext({localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},toast:()=>{}});
+const storage=new Map();const c=vm.createContext({state:{},cloudSync:{ready:true},save:()=>{},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},toast:()=>{}});
 vm.runInContext(code,c);const run=s=>JSON.parse(JSON.stringify(vm.runInContext(s,c)));
 assert.deepEqual(run(`moveModuleCards(['a','b','c','d'],['a','b','c','d'],'a','c',true)`),['b','c','a','d']);
 assert.deepEqual(run(`moveModuleCards(['a','hidden','b','c'],['a','b','c'],'c','a',false)`),['c','hidden','a','b']);
@@ -11,5 +11,8 @@ assert.deepEqual(run(`orderModuleCards('selection',[{id:'a'},{id:'b'},{id:'new'}
 run(`saveModuleOrder('selection',null);true`);
 assert.deepEqual(run(`orderModuleCards('selection',[{id:'a'},{id:'b'}]).map(s=>s.id)`),['a','b']);
 assert.deepEqual(run(`readModuleOrders().building`),['z','x']);
-storage.set('feixi-module-order-v1','{bad');assert.deepEqual(run(`readModuleOrders()`),{});
+storage.set('feixi-module-order-v1','{bad');assert.deepEqual(run(`readLegacyModuleOrders()`),{});
+storage.set('feixi-module-order-v1',JSON.stringify({selection:['old']}));assert.deepEqual(run(`readModuleOrders().selection`),[]);
+assert.equal(run(`cloudSync.conflict=true;saveModuleOrder('building',['overwrite'])`),false);
+assert.deepEqual(run(`readModuleOrders().building`),['z','x']);
 console.log('PASS module card moves, filtered hidden slots, self drop, new cards, per-module reset, corrupt storage');

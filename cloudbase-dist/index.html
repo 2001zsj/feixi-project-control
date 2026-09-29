@@ -2133,7 +2133,8 @@ function renderHome(){
 const MODULE_ORDER_KEY='feixi-module-order-v1';
 const SORT_MODULES=['selection','difficult','pending','building','complete'];
 let moduleDrag=null;
-function readModuleOrders(){try{const value=JSON.parse(localStorage.getItem(MODULE_ORDER_KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}catch(e){return {}}}
+function readLegacyModuleOrders(){try{const value=JSON.parse(localStorage.getItem(MODULE_ORDER_KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}catch(e){return {}}}
+function readModuleOrders(){return {...readLegacyModuleOrders(),...(state.moduleOrders||{})}}
 function orderModuleCards(pool,stations){
   const saved=readModuleOrders()[pool];
   if(!Array.isArray(saved))return stations.slice();
@@ -2148,8 +2149,13 @@ function moveModuleCards(full,visible,source,target,after){
   return full.map(id=>slots.has(id)?ids[i++]:id);
 }
 function saveModuleOrder(pool,ids){
-  try{const orders=readModuleOrders();if(ids)orders[pool]=ids;else delete orders[pool];localStorage.setItem(MODULE_ORDER_KEY,JSON.stringify(orders));return true}
-  catch(e){toast('排序未保存，请检查浏览器存储空间');return false}
+  const previous=state.moduleOrders;
+  try{
+    if(!SORT_MODULES.includes(pool))throw Error('不支持的排序模块');
+    if(!cloudSync.ready||cloudSync.conflict)throw Error('请先连接云端并处理同步冲突');
+    state.moduleOrders={...(previous||{}),[pool]:ids?[...new Set(ids)]:[]};
+    save();toast('排序已保存，正在同步云端');return true;
+  }catch(e){state.moduleOrders=previous;toast('排序未保存：'+e.message);return false}
 }
 function defaultModuleCards(pool){
   const arr=state.stations.filter(s=>stationModule(s)===pool);
@@ -2160,7 +2166,13 @@ function defaultModuleCards(pool){
 function bindModuleSorting(pool,arr,opts){
   if(!SORT_MODULES.includes(pool))return;
   const reset=document.getElementById('resetModuleOrder');
+  reset.title='恢复共享默认排序（所有设备）';
   reset.onclick=()=>{if(saveModuleOrder(pool,null))renderList(pool,opts)};
+  const legacy=readLegacyModuleOrders()[pool];
+  if(Array.isArray(legacy)&&legacy.length){const button=document.createElement('button');button.className='btn';button.id='importLegacyOrder';button.textContent='同步本机原排序';reset.before(button);button.onclick=()=>{
+    if(state.moduleOrders?.[pool]&&!confirm('将此设备原有排序设为共享排序，电脑和手机都会使用此顺序？'))return;
+    if(saveModuleOrder(pool,legacy)){try{const local=readLegacyModuleOrders();delete local[pool];localStorage.setItem(MODULE_ORDER_KEY,JSON.stringify(local))}catch(e){}renderList(pool,opts)}
+  }};
   const rows=[...document.querySelectorAll('.rows > .row[data-open]')];
   const commit=(source,target,after)=>{
     const full=orderModuleCards(pool,defaultModuleCards(pool)).map(s=>s.id);
@@ -2169,7 +2181,7 @@ function bindModuleSorting(pool,arr,opts){
   rows.forEach(row=>{
     row.classList.add('module-sort-row');
     const handle=document.createElement('button');handle.className='sort-handle';handle.textContent='⠿';
-    handle.type='button';handle.title='拖动排序；方向键上下移动（保存在当前浏览器）';
+    handle.type='button';handle.title='拖动排序；方向键上下移动（云端同步至所有设备）';
     handle.setAttribute('aria-label','调整'+(stationDisplayName(stationBy(row.dataset.open)))+'的顺序');
     row.prepend(handle);handle.onclick=e=>e.stopPropagation();
     handle.onkeydown=e=>{

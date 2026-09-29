@@ -10,7 +10,7 @@ const folder='audit-evidence/online-'+Date.now();fs.mkdirSync(folder,{recursive:
   try{for(const width of sizes){const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<1000,isMobile:width<600});const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto(origin);await page.locator('#password').fill(password);await page.getByRole('button',{name:'进入工作台'}).click();await page.waitForFunction(()=>typeof cloudSync!=='undefined'&&cloudSync.ready);
    const data=await page.evaluate(async()=>({release:CLOUD_RELEASE,count:state.stations.length,modules:cloudModuleCounts(state),rows:(await cloudSync.db.from('feixi_stations').select('id,data,revision').limit(100)).data}));
-   assert.equal(data.release,'2026-09-29-workdays-2');assert.equal(data.rows.length,data.count);assert.equal(Object.values(data.modules).reduce((a,b)=>a+b,0),data.count);
+   assert.equal(data.release,'2026-09-29-status-text-1');assert.equal(data.rows.length,data.count);assert.equal(Object.values(data.modules).reduce((a,b)=>a+b,0),data.count);
    if(first)assert.deepEqual(data,first);else{first=data;fs.writeFileSync(path.join(folder,'snapshot.json'),JSON.stringify(data,null,2))}
    await page.getByRole('button',{name:'新增站点',exact:true}).click();await page.locator('#newStationForm').waitFor();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
    await page.screenshot({path:path.join(folder,engine.name()+'-'+width+'-new.png'),fullPage:true});

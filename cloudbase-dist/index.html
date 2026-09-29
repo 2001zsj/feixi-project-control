@@ -154,6 +154,29 @@ input,select,textarea{border-color:#dce4ef;background:#fff}input:focus,select:fo
  .deadline{padding:13px}.tl{padding:11px 12px}.station-title .station-heading h1{font-size:19px}.problem-focus>div:last-child{border-radius:10px}
 }
 @media(prefers-reduced-motion:reduce){.btn,.nav button{transition:none}}
+
+/* Compact daily-use layout: preserve readable type and touch targets. */
+.wrap{max-width:1600px;padding:14px 20px 20px}.top{padding:7px 20px;min-height:50px;gap:8px}.nav button{padding:6px 10px}
+.title{margin-bottom:10px}.dashboard-title{min-height:36px;margin-bottom:12px}.dashboard-title h1{font-size:22px}
+.lifecycle-summary{gap:10px;margin-bottom:14px}.lifecycle-summary button{min-height:70px;padding:12px 16px}.lifecycle-summary b{font-size:28px}
+.panel{margin-bottom:10px}.ph{min-height:38px;padding:6px 12px}.pb{padding:10px 12px}.focus-filters{padding:8px 12px 0;gap:6px}.focus-filters .btn{min-height:32px;padding:4px 10px}
+.hrows,.rows{gap:5px}.hrow{min-height:54px;padding:7px 12px;gap:6px}.hrow .sub,.row .sub{margin-top:1px}.hrow .name,.row .name{font-size:13px}.hproblem .val{line-height:1.45}
+.row{min-height:60px;padding-top:8px;padding-bottom:8px}.module-filters{padding:6px 10px;margin-bottom:8px}.panel-foot{padding-top:6px}
+.base{grid-template-columns:repeat(5,minmax(0,1fr));column-gap:16px}.base>div{padding:6px 0}.base .lab{margin-bottom:1px}.base-tools .btn{min-height:30px;padding:4px 8px}
+.deadline{padding:10px 12px;margin-bottom:8px;gap:12px}.daynum{font-size:22px}.timeline{gap:6px;margin-top:8px}.tl{padding:8px;min-height:74px}.tl .n{margin-bottom:4px}.tl .d{line-height:1.55}
+.parallel{margin-top:6px;gap:6px}.parallel .box{padding:6px 10px}.nodebar{padding:10px;margin-top:8px;gap:8px}.hist{padding:6px 0}.problem-focus>div:last-child{padding:10px 12px}.problem-followup{margin-top:6px}
+@media(min-width:721px) and (max-width:1100px){.base{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){
+ .top{padding:5px 10px;gap:2px 6px}.top .nav{margin:1px 0;gap:0}.top .nav button{min-height:44px;padding:4px 2px}.top .search{margin-top:1px}
+ .wrap{padding:10px 10px 18px}.title{gap:6px;margin-bottom:10px}.dashboard-title{margin-bottom:10px;min-height:0}.dashboard-title h1{font-size:19px}.dashboard-title>.btn{min-height:44px}
+ .lifecycle-summary{gap:5px;margin-bottom:10px}.lifecycle-summary button{min-height:64px;padding:6px 2px}.lifecycle-summary b{font-size:23px;margin-top:4px}
+ .panel{margin-bottom:10px}.ph{min-height:38px;padding:6px 10px}.pb{padding:8px}.focus-filters{padding:7px 8px 0;gap:4px}.focus-filters .btn{min-height:44px;padding:5px 6px}
+ .focus-panel .hrows{gap:6px}.focus-panel .hrow{padding:8px 10px;gap:3px 6px}.focus-panel .hrow .name{font-size:13px;line-height:1.45}.focus-panel .hproblem .val{line-height:1.45}.focus-panel .hrow .sub{font-size:11px;line-height:1.4}
+ .module-filters{padding:7px;gap:6px}.module-list .rows{gap:6px}.module-list .module-sort-row{padding:8px 10px;gap:4px}.module-list .module-sort-row>.mobilehide{line-height:1.45}.module-list .sort-handle{top:6px;left:7px}.module-list .row>.mobilehide:nth-last-child(2){padding-top:5px}
+ .base{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}.base>div{padding:5px 0}.base .lab{font-size:11px}.base .val{font-size:13px;line-height:1.4}.base-tools .btn{min-height:44px}
+ .deadline{padding:10px;gap:7px}.timeline{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.tl{display:block;padding:8px;min-height:0}.tl .n{font-size:13px;margin-bottom:4px}.tl .d{font-size:11px;line-height:1.55}.parallel .box{padding:6px 8px}
+ .nodebar{padding:9px;gap:7px}.nodebar .btn,.nodebar select,.nodebar input{min-height:44px}.problem-focus>div:last-child{padding:10px}.problem-focus{gap:10px}.hist{padding:6px 0}
+}
 </style>
 </head><body>
 <div class="top"><div class="brand">肥西站点推进</div><span id="cloudStatus" class="tag">本机</span><button class="btn" id="cloudRefreshNow" title="立即从云端读取最新数据">↻</button><button class="btn" id="cloudRetrySync" style="display:none">重试同步</button><button class="btn" id="cloudInitData" style="display:none">导入云端底册</button><div class="nav"><button data-page="home">工作台</button><button data-page="selection">选址中</button><button data-page="difficult">问题站点</button><button data-page="pending">待立项</button><button data-page="building">施工中</button><button data-page="complete">完工站</button><button data-page="calendar">大陆日历</button></div><form class="search" id="searchForm"><input id="globalSearch" placeholder="搜索站名、编号或归属地" aria-label="搜索站名、铁塔站名、订单号、项目编码、站址编码或归属地"><button class="btn">搜索</button></form></div>
@@ -2059,7 +2082,7 @@ function renderHome(){
   navOn('home');
   const counts=cloudModuleCounts(state),all=focusItems(),issues=smartDataIssues();
   const visible=all.filter(x=>homeFocusFilter==='all'||stationModule(x.s)===homeFocusFilter);
-  const shown=homeFocusExpanded?visible:visible.slice(0,8);
+  const shown=homeFocusExpanded?visible:visible.slice(0,12);
   const modules=[['selection','选址中'],['difficult','问题站点'],['pending','待立项'],['building','施工中'],['complete','完工站']];
   app.innerHTML=`<div class="title dashboard-title"><div><h1>工作台</h1><span class="muted">${state.stations.length} 个站点</span></div><span class="sp"></span><button class="btn green" data-go="new-station">新增站点</button><button class="btn primary" id="exportLedger">导出总台账</button><details class="data-tools"><summary class="btn">数据备份</summary><div class="actions"><button class="btn" id="backupData">下载完整备份</button><button class="btn" id="restoreData">恢复备份</button></div></details></div>
   <div class="summary lifecycle-summary">${modules.map(([id,label])=>`<button data-go="${id}"><span>${label}</span><b>${counts[id]}</b></button>`).join('')}</div>

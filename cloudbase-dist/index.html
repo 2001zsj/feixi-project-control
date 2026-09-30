@@ -207,7 +207,7 @@ input,select,textarea{border-color:#dce4ef;background:#fff}input:focus,select:fo
 @media(max-height:500px){.top{position:relative}.new-save{position:static}.toast{max-height:35vh;overflow:auto}}
 </style>
 </head><body>
-<div class="top"><div class="brand">肥西站点推进</div><span id="cloudStatus" class="tag">本机</span><button class="btn" id="cloudRefreshNow" title="立即从云端读取最新数据">↻</button><button class="btn" id="cloudRetrySync" style="display:none">重试同步</button><button class="btn" id="cloudInitData" style="display:none">导入云端底册</button><div class="nav"><button data-page="home">工作台</button><button data-page="selection">选址中</button><button data-page="difficult">问题站点</button><button data-page="pending">待立项</button><button data-page="building">施工中</button><button data-page="complete">完工站</button><button data-page="calendar">大陆日历</button></div><form class="search" id="searchForm"><input id="globalSearch" placeholder="搜索站名、编号或归属地" aria-label="搜索站名、铁塔站名、订单号、项目编码、站址编码或归属地"><button class="btn">搜索</button></form></div>
+<div class="top"><div class="brand">肥西站点推进</div><span id="cloudStatus" class="tag">本机</span><button class="btn" id="cloudRefreshNow" title="同步全部站点信息和排序" aria-label="同步全部站点信息和排序">↻</button><button class="btn" id="cloudRetrySync" style="display:none">重试同步</button><button class="btn" id="cloudInitData" style="display:none">导入云端底册</button><div class="nav"><button data-page="home">工作台</button><button data-page="selection">选址中</button><button data-page="difficult">问题站点</button><button data-page="pending">待立项</button><button data-page="building">施工中</button><button data-page="complete">完工站</button><button data-page="calendar">大陆日历</button></div><form class="search" id="searchForm"><input id="globalSearch" placeholder="搜索站名、编号或归属地" aria-label="搜索站名、铁塔站名、订单号、项目编码、站址编码或归属地"><button class="btn">搜索</button></form></div>
 <input type="file" id="backupFile" accept=".json,application/json" hidden><input type="file" id="cloudBackupFile" accept=".json,application/json" hidden><div id="restorePreview" class="wrap hide"></div>
 <div id="cloudConnectionError" class="wrap hide" role="alert" style="color:#a12b2b;overflow-wrap:anywhere"></div><div id="app" class="wrap"></div><div id="toast" class="toast"></div>
 <script src="https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js"></script>
@@ -526,7 +526,7 @@ async function cloudRefresh(force=false){
     cloudSync.lastError=e&&e.message||String(e);
     cloudStatus('warn','云端检查失败');
     return false;
-  }finally{cloudSync.refreshing=false}
+  }finally{cloudSync.refreshing=false;if(!cloudSync.lastError)migrateLegacyModuleOrders()}
 }
 async function cloudInitializeFromBackup(data,exportedAt){
   if(!cloudSync.db)throw Error('云端尚未连接');
@@ -688,7 +688,7 @@ async function startCloud(){
       cloudSync.syncedState=clone(remote);state=resumed;saveLocalOnly();
       cloudSync.ready=true;cloudSync.writeFailed=false;cloudPersistOutbox();queueCloudSync(clone(state));
     }else{cloudApplyRemote(remote);cloudSync.ready=true;cloudStatus('ok','云端已同步')}
-    cloudSync.empty=false;cloudInitButton(false);render();
+    cloudSync.empty=false;cloudInitButton(false);migrateLegacyModuleOrders();render();
     if(!cloudSync.refreshTimer)cloudSync.refreshTimer=setInterval(cloudRefresh,CLOUD_POLL_MS);
     window.addEventListener('focus',()=>cloudRefresh(true));
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)cloudRefresh()});
@@ -2134,6 +2134,18 @@ const MODULE_ORDER_KEY='feixi-module-order-v1';
 const SORT_MODULES=['selection','difficult','pending','building','complete'];
 let moduleDrag=null;
 function readLegacyModuleOrders(){try{const value=JSON.parse(localStorage.getItem(MODULE_ORDER_KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}catch(e){return {}}}
+function migrateLegacyModuleOrders(){
+  if(!cloudSync.ready||cloudSync.dirty||cloudSync.pending||cloudSync.syncing||cloudSync.conflict||moduleDrag)return false;
+  const previous=state.moduleOrders,merged={...(previous||{})},legacy=readLegacyModuleOrders();let changed=false;
+  const ids=new Set(state.stations.map(s=>s.id));
+  for(const pool of SORT_MODULES){
+    if(Object.prototype.hasOwnProperty.call(merged,pool)||!Array.isArray(legacy[pool]))continue;
+    const order=[...new Set(legacy[pool].filter(id=>typeof id==='string'&&ids.has(id)))];
+    if(order.length){merged[pool]=order;changed=true}
+  }
+  if(!changed)return false;
+  try{state.moduleOrders=merged;save();return true}catch(e){state.moduleOrders=previous;return false}
+}
 function readModuleOrders(){return {...readLegacyModuleOrders(),...(state.moduleOrders||{})}}
 function orderModuleCards(pool,stations){
   const saved=readModuleOrders()[pool];
@@ -2168,11 +2180,6 @@ function bindModuleSorting(pool,arr,opts){
   const reset=document.getElementById('resetModuleOrder');
   reset.title='恢复共享默认排序（所有设备）';
   reset.onclick=()=>{if(saveModuleOrder(pool,null))renderList(pool,opts)};
-  const legacy=readLegacyModuleOrders()[pool];
-  if(Array.isArray(legacy)&&legacy.length){const button=document.createElement('button');button.className='btn';button.id='importLegacyOrder';button.textContent='同步本机原排序';reset.before(button);button.onclick=()=>{
-    if(state.moduleOrders?.[pool]&&!confirm('将此设备原有排序设为共享排序，电脑和手机都会使用此顺序？'))return;
-    if(saveModuleOrder(pool,legacy)){try{const local=readLegacyModuleOrders();delete local[pool];localStorage.setItem(MODULE_ORDER_KEY,JSON.stringify(local))}catch(e){}renderList(pool,opts)}
-  }};
   const rows=[...document.querySelectorAll('.rows > .row[data-open]')];
   const commit=(source,target,after)=>{
     const full=orderModuleCards(pool,defaultModuleCards(pool)).map(s=>s.id);

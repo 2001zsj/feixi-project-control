@@ -1,0 +1,12 @@
+// Shared business state through local D1 only. Never run against production.
+const fs=require('fs'),path=require('path'),assert=require('assert/strict');const {chromium}=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
+(async()=>{const b=await chromium.launch({channel:'chrome',headless:true});try{async function open(width){const p=await b.newPage({viewport:{width,height:900}});await p.goto('http://127.0.0.1:8787');await p.locator('#password').fill(JSON.parse(fs.readFileSync('cloudflare/secrets.local.json')).APP_PASSWORD);await p.getByRole('button',{name:'进入工作台'}).click();await p.waitForFunction(()=>typeof cloudSync!=='undefined'&&cloudSync.ready);return p}
+const p=await open(1440),q=await open(390);const id=await p.evaluate(()=>state.stations.find(s=>stationModule(s)==='selection').id);
+await p.evaluate(id=>{const s=stationBy(id);recordStationUndo(s,'本地跨端资料验证');s.selector='本地同步验证';s.selectionProgress='跨端最新进展';s.isDifficultSite=true;s.selectionProblem='本地测试问题';s.selectionProblemStatus='未解决';s.selectionFollowups.push({date:today(),text:'本地测试最新跟进',status:'问题跟进'});save()},id);
+await p.waitForFunction(()=>!cloudSync.dirty&&!cloudSync.syncing&&!cloudSync.lastError);await q.locator('#cloudRefreshNow').click();await q.waitForFunction(id=>stationBy(id)?.selector==='本地同步验证',id);
+const snapshot=page=>page.evaluate(id=>({station:stationBy(id),history:state.stationUndoHistory[id],counts:cloudModuleCounts(state)}),id);assert.deepEqual(await snapshot(q),await snapshot(p));
+await q.evaluate(id=>{const s=stationBy(id);applyStationCommand(s,'SELECTION_DONE');applyStationCommand(s,'START_PROJECT',{code:'LOCAL-SYNC-'+Date.now(),date:today()});recordStationUndo(s,'本地施工节点验证');s.entryDate=today();save()},id);
+await q.waitForFunction(()=>!cloudSync.dirty&&!cloudSync.syncing&&!cloudSync.lastError);await p.locator('#cloudRefreshNow').click();await p.waitForFunction(id=>!!stationBy(id).entryDate,id);assert.deepEqual(await snapshot(p),await snapshot(q));
+await p.reload();await p.waitForFunction(()=>typeof cloudSync!=='undefined'&&cloudSync.ready);assert.deepEqual(await snapshot(p),await snapshot(q));assert.equal(await p.locator('#importLegacyOrder').count(),0);
+console.log('PASS desktop/mobile shared base info, progress, problem/followup, module transition/counts, construction nodes, history and reload through existing sync button');
+}finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

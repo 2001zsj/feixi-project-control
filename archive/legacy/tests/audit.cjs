@@ -2,8 +2,8 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const root = path.resolve(__dirname, '..');
-const html = fs.readFileSync(process.env.AUDIT_HTML || path.join(root, 'index.html'), 'utf8');
+const root = path.resolve(__dirname, '../../..');
+const html = fs.readFileSync(process.env.AUDIT_HTML || path.join(root, 'archive/legacy/index.html'), 'utf8');
 const source = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 new vm.Script(source); // Includes the real bootstrap in syntax validation.
 const bootIndex=source.includes('try{load()}')?source.lastIndexOf('try{load()}'):source.lastIndexOf('load();const app=');

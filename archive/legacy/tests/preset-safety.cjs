@@ -1,6 +1,6 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
-const root=path.resolve(__dirname,'..');
-const source=fs.readFileSync(path.join(root,'index.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const root=path.resolve(__dirname,'../../..');
+const source=fs.readFileSync(path.join(root,'archive/legacy/index.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 const code=source.slice(0,source.lastIndexOf('try{load()}'));
 const key='feixi-v072-state',results=[];
 function boot(value,options={}){

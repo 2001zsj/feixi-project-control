@@ -5,7 +5,7 @@ function replace(a,b){if(!html.includes(a))throw Error('Build marker missing: '+
 const start=html.indexOf('// SHARED_STATION_RULES_BEGIN'),end=html.indexOf('// SHARED_STATION_RULES_END');
 fs.writeFileSync(path.join(root,'cloudflare/generated-rules.mjs'),html.slice(start,end)+'\nexport {assertStationChange};\n');
 replace('https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js','/adapter.js');
-replace("const CLOUD_RELEASE='2026-09-27-ledger-style-1';","const CLOUD_RELEASE='2026-09-30-station-scroll-1';");
+replace("const CLOUD_RELEASE='2026-09-27-ledger-style-1';","const CLOUD_RELEASE='2026-09-30-linkage-1';");
 replace('if(!cloudSync.refreshTimer)cloudSync.refreshTimer=setInterval(cloudRefresh,CLOUD_POLL_MS);',`// Refresh shared business data only while this page is visible.
     let lastCheck=Date.now();
     const checkOnReturn=()=>{if(!document.hidden&&Date.now()-lastCheck>5000){lastCheck=Date.now();cloudRefresh()}};

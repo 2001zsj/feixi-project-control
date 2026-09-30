@@ -21,3 +21,10 @@ run(`var pending={id:'pending',selectionDone:true};`);assert.throws(()=>run(`app
 run(`applyStationCommand(pending,'START_PROJECT',{code:'new',date:'2026-09-27'})`);assert.equal(run('stationModule(pending)'),'building');assert.throws(()=>run(`applyStationCommand(pending,'START_PROJECT',{code:'overwrite'})`));
 run(`var difficult={id:'difficult',isDifficultSite:true,selectionProblemStatus:'未解决'};applyStationCommand(difficult,'SELECTION_DONE')`);assert.equal(run('stationModule(difficult)'),'pending');assert.equal(run('difficult.isDifficultSite'),false);
 console.log('PASS status regression: historical/current delays, actual stage, explicit pending status, date/chronology validation, completion confirmation, guarded transitions');
+
+run(`var back={id:'back',selectionDone:true,pendingEstablishStatus:'待协调',pendingEstablishProgress:'旧立项情况',priorProjectHistory:[{establishRef:'old'}]};applyStationCommand(back,'RETURN_SELECTION',{reason:'场址需重新协调',problem:true});`);
+assert.equal(run('stationModule(back)'),'difficult');assert.equal(run('needsFocus(back)'),true);assert.equal(run('back.priorProjectHistory[0].establishRef'),'old');assert.equal(run('latestProblemFollowup(back)'),'场址需重新协调');
+run(`applyStationCommand(back,'SELECTION_DONE');applyStationCommand(back,'RETURN_SELECTION',{reason:'重新选址'});`);assert.equal(run('stationModule(back)'),'selection');assert.equal(run('back.pendingEstablishProgress'),'');
+assert.throws(()=>run(`applyStationCommand(back,'RETURN_SELECTION',{reason:'重复退回'})`));
+run(`var done={id:'done',completeConfirmed:true};applyStationCommand(done,'UPDATE_COMPLETE_DATE',{date:'2026-09-26'});`);assert.equal(run('stationModule(done)'),'complete');assert.equal(run('done.completeDate'),'2026-09-26');assert.throws(()=>run(`applyStationCommand(done,'UPDATE_COMPLETE_DATE',{date:'2026-09-28'})`));assert.equal(run('done.completeDate'),'2026-09-26');
+console.log('PASS pending return paths, retained project history, fresh follow-up, completion date without reopening and invalid-date rejection');

@@ -2679,6 +2679,7 @@ function render(){if(moduleDrag)return;try{if(!state.stations.length){app.innerH
 async function boot(){
   try{load()}catch(e){document.getElementById('app').innerHTML='<div class="err">'+esc(e.message)+'</div>';throw e}
   document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>go(b.dataset.page));
+  matchMedia('(max-width:720px)').addEventListener('change',e=>document.querySelector('.list-tools')?.toggleAttribute('open',!e.matches));
   document.getElementById('toggleSearch').onclick=()=>{const top=document.querySelector('.top'),open=top.classList.toggle('search-open');document.getElementById('toggleSearch').setAttribute('aria-expanded',String(open));if(open)document.getElementById('globalSearch').focus()};
   document.getElementById('searchForm').onsubmit=e=>{e.preventDefault();const q=document.getElementById('globalSearch').value.trim();if(q)go('search/'+encodeURIComponent(q))};
   window.addEventListener('hashchange',render);

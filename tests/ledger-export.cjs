@@ -7,7 +7,7 @@ const c=vm.createContext({Date,Map,Set,URLSearchParams,console,TextEncoder,Blob,
   URL:{createObjectURL:b=>(blob=b,'blob:test'),revokeObjectURL:()=>{}},setTimeout:()=>{},
   document:{createElement:()=>{const a={click:()=>{download=a.download}};return a}},
   localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)}});
-vm.runInContext(code,c);const run=s=>vm.runInContext(s,c);run(`today=()=> '2026-09-27'`);
+vm.runInContext(code,c);const run=s=>vm.runInContext(s,c);const realToday=run('today()');run(`today=()=> '2026-09-27'`);
 function unzip(buffer){
   const files={};let p=0;
   while(buffer.readUInt32LE(p)===0x04034b50){
@@ -22,7 +22,7 @@ const fixtures=[
   {id:'b',demandName:'第二个选址'},
   {id:'d',isDifficultSite:true,selectionProblem:'产权未解决'},
   {id:'p',selectionDone:true,pendingEstablishProgress:'重新立项'},
-  {id:'s',establishRef:'P123',establishDate:'2026-09-01',entryDate:'2026-09-02'},
+  {id:'s',demandName:'同名站点',towerName:'同名站点',establishRef:'P123',establishDate:'2026-09-01',entryDate:'2026-09-02',plannedNodes:{pourDate:'2026-10-15',towerDate:'2026-11-01'},currentSituation:'实际已进场，尚未浇筑',currentNextAction:'协调浇筑',currentOwner:'负责人'},
   {id:'c',completeConfirmed:true,towerDate:'2026-09-03'},
   {id:'h',demandName:'暂时保留样例',selectionHold:true}
 ];
@@ -48,7 +48,19 @@ const fixtures=[
   const header=overview.match(/<row r="4"[\s\S]*?<\/row>/)[0];
   assert.ok(header.indexOf('需求站名')<header.indexOf('所属模块'));
   assert.ok(header.includes('当前进展/问题'));assert.ok(!header.includes('需求订单号'));
-  assert.equal((header.match(/<c /g)||[]).length,7);
+  assert.equal((header.match(/<c /g)||[]).length,8);
+  assert.ok(header.includes('铁塔站名'));
+  const building=files['xl/worksheets/sheet5.xml'];
+  const buildHeaders=[...building.match(/<row r="4"[\s\S]*?<\/row>/)[0].matchAll(/<t>(.*?)<\/t>/g)].map(x=>x[1]);
+  const buildCells=[...building.match(/<row r="5"[\s\S]*?<\/row>/)[0].matchAll(/<c r="([A-Z]+)5"[\s\S]*?(?:<\/c>|\/>)/g)].map(x=>x[0]);
+  assert.equal((building.match(/同名站点/g)||[]).length,2);
+  assert.ok(!building.includes('计划浇筑'));assert.ok(!building.includes('计划装塔'));
+  assert.ok(building.includes('outlineLevel="1"'));
+  assert.ok(building.includes('hidden="1"'));assert.ok(building.includes('collapsed="1"'));
+  assert.ok(buildHeaders.indexOf('项目编码')<buildHeaders.indexOf('当前进展'));
+  for(const field of ['下一步动作','当前责任人','当前进展'])assert.ok(buildHeaders.includes(field),field);
+  assert.ok(buildCells[buildHeaders.indexOf('浇筑日期')].endsWith('/>'),'plan must not become actual pour');
+  assert.ok(building.includes('协调浇筑'));
   assert.ok(files['xl/worksheets/sheet2.xml'].includes('s="19"'));assert.ok(header.includes('s="20"'));
   assert.ok(overview.includes('ySplit="4"'));assert.ok(overview.includes('<autoFilter ref="A4:'));
   assert.ok(files['xl/worksheets/sheet2.xml'].includes('基础资料'));
@@ -66,6 +78,7 @@ const fixtures=[
   run(`exportXls(fixtures.slice(0,2),'selection','选址中')`);
   assert.equal(Object.keys(unzip(Buffer.from(await blob.arrayBuffer()))).filter(k=>k.startsWith('xl/worksheets/')).length,1);
   if(process.argv[2]){
+    c.exportDay=realToday;run('today=()=>exportDay');
     c.fixtures=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).stations.map(r=>r.data.station);
     run(`exportXls(fixtures,'ledger','总台账')`);
     const data=Buffer.from(await blob.arrayBuffer());

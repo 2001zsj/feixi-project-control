@@ -2385,6 +2385,8 @@ function renderCalendar(){
 function exportXls(arr,module='all',title='',sheetOnly=false){
   const moduleLabels={selection:'选址中',difficult:'问题站点',pending:'待立项',building:'施工中',complete:'完工站',hold:'暂时保留'};
   const ledger=module==='ledger';
+  const obsoleteSelectionNote=s=>!hasConstructionProblem(s)&&(s.selectionDone||hasProjectCode(s)||s.constructionStarted||isComplete(s))&&/^(设计表记录|新建站总表)[:：].*选址未完成/.test(String(s.currentSituation||''));
+  const currentProgress=s=>obsoleteSelectionNote(s)?mainStage(s):s.currentSituation||'';
   const B=[
     {h:'运营商',g:s=>s.operator,w:7.5,center:true},
     {h:'需求站名',g:s=>s.demandName,w:23,wrap:true},
@@ -2400,7 +2402,8 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
     {h:'站址经度',g:s=>s.siteLng,w:12,type:'coord',center:true},
     {h:'站址纬度',g:s=>s.siteLat,w:12,type:'coord',center:true},
     {h:'建设方式',g:s=>s.buildMethod,w:11,center:true},
-    {h:'配置',g:s=>s.buildConfig,w:32,wrap:true}
+    {h:'配置',g:s=>s.buildConfig,w:32,wrap:true},
+    {h:'历史导入备注',g:s=>obsoleteSelectionNote(s)?s.currentSituation:'',w:38,wrap:true}
   ];
   const latestFollow=s=>{const a=s.selectionFollowups||[];return a.length?a[a.length-1]:null};
   const normalSelCols=[
@@ -2421,7 +2424,7 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
     {h:'选址立项情况',g:s=>pendingEstablishText(s),w:28,wrap:true}
   ];
   const afterCols=[
-    {h:'当前进展',g:s=>s.currentSituation||'',w:38,wrap:true},
+    {h:'当前进展',g:currentProgress,w:38,wrap:true},
     {h:'下一步动作',g:s=>s.currentNextAction||'',w:30,wrap:true},
     {h:'当前责任人',g:s=>s.currentOwner||'',w:12,wrap:true},
     {h:'立项状态',g:s=>s.establishRef?'已立项':s.constructionStarted?'未立项，编码后补':'待立项',w:10,center:true,status:true},
@@ -2459,7 +2462,7 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
     extra=[...priority.map(h=>afterCols.find(c=>c.h===h)),...afterCols.filter(c=>!priority.includes(c.h))];
   }
   const overviewCols=mixedCols.concat([
-    {h:'当前进展/问题',g:s=>stationModule(s)==='difficult'?(s.selectionProblem||s.sourceRemark||''):['selection','hold'].includes(stationModule(s))?latestSelectionProgress(s):stationModule(s)==='pending'?pendingEstablishText(s):hasConstructionProblem(s)?constructionProblemReason(s):(s.currentSituation||''),w:36,wrap:true},
+    {h:'当前进展/问题',g:s=>stationModule(s)==='difficult'?(s.selectionProblem||s.sourceRemark||''):['selection','hold'].includes(stationModule(s))?latestSelectionProgress(s):stationModule(s)==='pending'?pendingEstablishText(s):hasConstructionProblem(s)?constructionProblemReason(s):currentProgress(s),w:36,wrap:true},
     {h:'最近更新',g:s=>fmtDT(s.lastUpdate||''),w:16,center:true}
   ]);
   const front=['需求站名','铁塔站名','运营商','归属地',...(ledger?[]:['项目编码'])];

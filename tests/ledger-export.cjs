@@ -81,6 +81,17 @@ const fixtures=[
   const multiline=run(`exportXls([{demandName:'长文本测试',selectionProgress:'第一行\\n第二行\\n第三行\\n第四行'}],'selection','',true).sheet`);
   assert.ok(Number(multiline.match(/<row r="5" ht="([\d.]+)"/)[1])>=76);
   assert.equal(download,'肥西站点总台账_2026-09-27.xlsx');
+  const stale={id:'gaodian',demandName:'肥西高店运河新镇',towerName:'肥西高店运河新镇',selectionDone:true,isDifficultSite:false,establishRef:'26A09AHHF011005311',establishDate:'2026-09-29',currentSituation:'设计表记录：选址未完成，问题站点；备注：楼面站选址'};
+  c.stale=stale;
+  const staleSheet=run(`exportXls([stale],'building','',true).sheet`);
+  const staleHeaders=[...staleSheet.match(/<row r="4"[\s\S]*?<\/row>/)[0].matchAll(/<t>(.*?)<\/t>/g)].map(x=>x[1]);
+  const staleCells=[...staleSheet.match(/<row r="5"[\s\S]*?<\/row>/)[0].matchAll(/<c r="([A-Z]+)5"[\s\S]*?(?:<\/c>|\/>)/g)].map(x=>x[0]);
+  assert.ok(!staleCells[staleHeaders.indexOf('当前进展')].includes('问题站点'),'legacy source must not describe current problem');
+  assert.ok(staleCells[staleHeaders.indexOf('历史导入备注')].includes('选址未完成，问题站点'),'source must be preserved');
+  assert.ok(staleCells[staleHeaders.indexOf('当前进展')].includes('待进场放线'));
+  assert.ok(run(`exportXls([{...stale,constructionProblem:true}],'building','',true).sheet`).includes('有施工问题'),'explicit current construction problem must remain');
+  const ongoing=run(`exportXls([{...stale,currentSituation:'现场协调未完成，等待进场'}],'building','',true).sheet`);
+  assert.ok(ongoing.includes('现场协调未完成，等待进场'),'manual current progress must remain');
   run(`exportXls([],'ledger','总台账')`);
   const empty=unzip(Buffer.from(await blob.arrayBuffer()));
   assert.equal(Object.keys(empty).filter(k=>k.startsWith('xl/worksheets/')).length,7);

@@ -6,6 +6,7 @@ on:
       - 'cloudbase-dist/index.html'
       - 'tests/cloudbase-sync.cjs'
       - 'tests/storage-quota.cjs'
+      - 'tests/storage-cleanup.cjs'
       - 'tests/module-order.cjs'
       - 'tests/status-rules.cjs'
       - 'tests/construction-workdays.cjs'
@@ -31,6 +32,7 @@ jobs:
           node-version: '20'
       - run: node tests/cloudbase-sync.cjs
       - run: node tests/storage-quota.cjs
+      - run: node tests/storage-cleanup.cjs
       - run: node tests/module-order.cjs
       - run: node tests/status-rules.cjs
       - run: node tests/construction-workdays.cjs

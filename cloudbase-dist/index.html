@@ -258,6 +258,23 @@ function cloudStatus(kind,text){
   if(retry)retry.style.display=cloudSync.writeFailed&&!cloudSync.conflict?'inline-flex':'none';
 }
 function cloudQuotaError(e){return e&&(e.name==='QuotaExceededError'||e.code===22||e.code===1014)}
+async function cloudCleanupSyncedCache(){
+  const safe=()=>cloudSync.ready&&!cloudSync.dirty&&!cloudSync.pending&&!cloudSync.syncing&&!cloudSync.conflict&&!cloudSync.writeFailed&&!cloudSync.recovery&&!localStorage.getItem(CLOUD_OUTBOX_KEY)&&!cloudSync.idbOutboxRaw&&cloudSame(state,cloudSync.syncedState);
+  if(!safe())return;
+  try{
+    if(typeof indexedDB!=='undefined'&&await cloudOutboxIDB('read'))return;
+    if(!safe())return;
+    // Old refreshes made a complete copy each time. Keep the newest recovery copy.
+    // Conflict archives, restore backups, drafts and business history are independent.
+    const prefix=KEY+':before-cloud-load:',keys=[];
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(prefix)&&/^\d+$/.test(k.slice(prefix.length)))keys.push(k)}
+    keys.sort((a,b)=>Number(b.slice(prefix.length))-Number(a.slice(prefix.length)));
+    let bytes=0;for(const k of keys.slice(1)){bytes+=2*(k.length+(localStorage.getItem(k)||'').length);localStorage.removeItem(k)}
+    cloudSync.cacheCleanup={removed:Math.max(0,keys.length-1),bytes};
+    try{saveLocalOnly();cloudSync.cacheFull=false}catch(e){if(!cloudQuotaError(e))throw e}
+    if(cloudSync.cacheCleanup.removed)toast('已清理 '+cloudSync.cacheCleanup.removed+' 份旧缓存备份');
+  }catch(e){console.warn('旧缓存清理跳过',e)}
+}
 function cloudOutboxIDB(mode,raw){return new Promise((resolve,reject)=>{
  const req=indexedDB.open('fxtt-local-sync',1);req.onupgradeneeded=()=>req.result.createObjectStore('outbox');req.onerror=()=>reject(req.error);
  req.onsuccess=()=>{const db=req.result,tx=db.transaction('outbox',mode==='read'?'readonly':'readwrite'),store=tx.objectStore('outbox');let result;const get=store.get(CLOUD_OUTBOX_KEY);
@@ -477,6 +494,7 @@ function queueCloudSync(snapshot){
       try{
         if(cloudSync.ready&&!cloudSync.conflict&&!cloudSync.writeFailed&&cloudSync.pending===0){
           await cloudClearOutbox();cloudSync.dirty=false;cloudSync.recovery=null;cloudSync.lastError='';
+          await cloudCleanupSyncedCache();
           cloudStatus('ok','云端已同步');
         }else await cloudPersistOutbox();
       }catch(e){cloudSync.dirty=true;cloudSync.writeFailed=true;cloudSync.lastError=e.message;cloudStatus('bad','本机备份失败')}
@@ -703,7 +721,7 @@ async function startCloud(){
       const resumed=cloudResumeOutbox(remote);
       cloudSync.syncedState=clone(remote);state=resumed;cloudSync.localSavedState=clone(state);try{saveLocalOnly()}catch(e){if(!cloudQuotaError(e))throw e;cloudSync.cacheFull=true}
       cloudSync.ready=true;cloudSync.writeFailed=false;cloudPersistOutbox();queueCloudSync(clone(state));
-    }else{cloudApplyRemote(remote);cloudSync.ready=true;cloudStatus('ok','云端已同步')}
+    }else{cloudApplyRemote(remote);cloudSync.ready=true;await cloudCleanupSyncedCache();cloudStatus('ok','云端已同步')}
     cloudSync.empty=false;cloudInitButton(false);migrateLegacyModuleOrders();render();
     if(!cloudSync.refreshTimer)cloudSync.refreshTimer=setInterval(cloudRefresh,CLOUD_POLL_MS);
     window.addEventListener('focus',()=>cloudRefresh(true));
@@ -2714,4 +2732,3 @@ boot();
 @media(max-width:1000px){}
 @media(max-width:700px){}
 >
-

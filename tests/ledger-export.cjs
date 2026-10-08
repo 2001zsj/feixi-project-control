@@ -61,6 +61,16 @@ const fixtures=[
   for(const field of ['下一步动作','当前责任人','当前进展'])assert.ok(buildHeaders.includes(field),field);
   assert.ok(buildCells[buildHeaders.indexOf('浇筑日期')].endsWith('/>'),'plan must not become actual pour');
   assert.ok(building.includes('协调浇筑'));
+  const xfs=[...files['xl/styles.xml'].match(/<cellXfs[\s\S]*?<\/cellXfs>/)[0].matchAll(/<xf\b[^>]*\/>|<xf\b[^>]*>[\s\S]*?<\/xf>/g)].map(x=>x[0]);
+  for(let i=1;i<=7;i++){
+    const sheet=files[`xl/worksheets/sheet${i}.xml`];
+    for(const row of sheet.matchAll(/<row r="(?:[5-9]|\d{2,})"[\s\S]*?<\/row>/g)){
+      for(const cell of row[0].matchAll(/<c r="([A-Z]+)\d+" s="(\d+)"/g)){
+        const style=xfs[Number(cell[2])];assert.ok(style.includes('vertical="center"'));
+        if(['A','B'].includes(cell[1])){assert.ok(style.includes('horizontal="center"'));assert.ok(style.includes('wrapText="1"'))}
+      }
+    }
+  }
   assert.ok(files['xl/worksheets/sheet2.xml'].includes('s="19"'));assert.ok(header.includes('s="20"'));
   assert.ok(overview.includes('ySplit="4"'));assert.ok(overview.includes('<autoFilter ref="A4:'));
   assert.ok(files['xl/worksheets/sheet2.xml'].includes('基础资料'));

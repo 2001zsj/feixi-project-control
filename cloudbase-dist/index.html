@@ -2466,7 +2466,8 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
   const colsDef=[...front.map(h=>B.find(c=>c.h===h)),...(ledger?overviewCols:extra),...(ledger?[]:B.filter(c=>!front.includes(c.h)))].map(col=>({
     ...col,group:col.group||(front.includes(col.h)?'identity':B.includes(col)?'base':'progress'),
     w:col.h.includes('更新')?20:col.type==='date'?13:col.type==='coord'?15:col.h.includes('编码')||col.h==='需求订单号'?25:col.h.includes('站名')?32:col.h==='运营商'?9:col.h==='归属地'?14:col.status?Math.min(24,Math.max(col.w,12)):Math.max(col.w,10),
-    wrap:col.wrap||col.status||col.h==='建设方式'||col.h.includes('站名')
+    wrap:col.wrap||col.status||col.h==='建设方式'||col.h.includes('站名'),
+    center:col.center||col.h.includes('站名')
   }));
   const rows=arr.map(s=>colsDef.map(col=>col.g(s)));
   const moduleName=module==='hold'?'暂时保留':module==='selection'?'选址中':module==='difficult'?'问题站点':module==='pending'?'待立项':module==='building'||module==='after'?'施工中':module==='complete'?'完工站':(title||'站点筛选结果');
@@ -2583,13 +2584,13 @@ function exportXls(arr,module='all',title='',sheetOnly=false){
     +'<xf numFmtId="0" fontId="2" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
     +'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'
     +'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
-    +'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" wrapText="1"/></xf>'
+    +'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
     +'<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
     +'<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
     +'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
     +'<xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'
     +'<xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
-    +'<xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" wrapText="1"/></xf>'
+    +'<xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
     +'<xf numFmtId="164" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
     +'<xf numFmtId="165" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
     +'<xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'

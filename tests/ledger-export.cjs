@@ -23,15 +23,16 @@ const fixtures=[
   {id:'d',isDifficultSite:true,selectionProblem:'产权未解决'},
   {id:'p',selectionDone:true,pendingEstablishProgress:'重新立项'},
   {id:'s',establishRef:'P123',establishDate:'2026-09-01',entryDate:'2026-09-02'},
-  {id:'c',completeConfirmed:true,towerDate:'2026-09-03'}
+  {id:'c',completeConfirmed:true,towerDate:'2026-09-03'},
+  {id:'h',demandName:'暂时保留样例',selectionHold:true}
 ];
 (async()=>{
   c.fixtures=fixtures;run(`state={stations:fixtures,moduleOrders:{selection:['b','a']}};exportXls(fixtures,'ledger','总台账')`);
   const files=unzip(Buffer.from(await blob.arrayBuffer()));
   const wb=files['xl/workbook.xml'];
-  for(const name of ['总览','选址中','问题站点','待立项','施工中','完工站'])assert.ok(wb.includes('name="'+name+'"'));
-  const expected=[6,2,1,1,1,1];
-  for(let i=1;i<=6;i++){
+  for(const name of ['总览','选址中','问题站点','待立项','施工中','完工站','暂时保留'])assert.ok(wb.includes('name="'+name+'"'));
+  const expected=[7,2,1,1,1,1,1];
+  for(let i=1;i<=7;i++){
     const sheet=files[`xl/worksheets/sheet${i}.xml`];
     assert.equal([...sheet.matchAll(/<row r=/g)].length-4,expected[i-1]);
     assert.ok(sheet.includes('state="frozen"'));assert.ok(sheet.includes('<autoFilter'));
@@ -60,7 +61,7 @@ const fixtures=[
   assert.equal(download,'肥西站点总台账_2026-09-27.xlsx');
   run(`exportXls([],'ledger','总台账')`);
   const empty=unzip(Buffer.from(await blob.arrayBuffer()));
-  assert.equal(Object.keys(empty).filter(k=>k.startsWith('xl/worksheets/')).length,6);
+  assert.equal(Object.keys(empty).filter(k=>k.startsWith('xl/worksheets/')).length,7);
   assert.ok(empty['xl/worksheets/sheet1.xml'].includes('站点数量：0'));
   run(`exportXls(fixtures.slice(0,2),'selection','选址中')`);
   assert.equal(Object.keys(unzip(Buffer.from(await blob.arrayBuffer()))).filter(k=>k.startsWith('xl/worksheets/')).length,1);
@@ -69,9 +70,9 @@ const fixtures=[
     run(`exportXls(fixtures,'ledger','总台账')`);
     const data=Buffer.from(await blob.arrayBuffer());
     if(process.argv[3])fs.writeFileSync(process.argv[3],data);
-    const real=unzip(data);const counts=Array.from({length:6},(_,i)=>[...real[`xl/worksheets/sheet${i+1}.xml`].matchAll(/<row r=/g)].length-4);
+    const real=unzip(data);const counts=Array.from({length:7},(_,i)=>[...real[`xl/worksheets/sheet${i+1}.xml`].matchAll(/<row r=/g)].length-4);
     assert.equal(counts[0],c.fixtures.length);assert.equal(counts.slice(1).reduce((a,b)=>a+b,0),counts[0]);
     console.log('Snapshot sheet row counts:',counts);
   }
-  console.log('PASS workbook package, six sheets, partitions, manual order, text IDs, XML escaping, formula-safe text, empty modules and existing single-sheet export');
+  console.log('PASS workbook package, seven sheets, partitions, manual order, text IDs, XML escaping, formula-safe text, empty modules and existing single-sheet export');
 })().catch(e=>{console.error(e);process.exit(1)});

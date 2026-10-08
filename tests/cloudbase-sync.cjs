@@ -73,7 +73,7 @@ async function test(name,fn){try{await fn();results.push({name,pass:true});conso
  });
  await test('restart rebases unrelated remote edits but refuses changed dirty station',()=>{
   const c=boot();c.run(`state.stations.push({id:'other',currentSituation:'old'});cloudSync.syncedState=clone(state);cloudSync.stationRevisions.set('other',1);
-   state.stations[0].currentSituation='dirty';cloudPersistOutbox();load();
+   saveLocalOnly();state.stations[0].currentSituation='dirty';cloudPersistOutbox();load();
    var remote=clone(cloudSync.syncedState);remote.stations[1].currentSituation='new remote';cloudSync.stationRevisions.set('other',2);
    var resumed=cloudResumeOutbox(remote);`);
   assert.equal(c.run('resumed.stations[0].currentSituation'),'dirty');assert.equal(c.run('resumed.stations[1].currentSituation'),'new remote');
@@ -92,6 +92,7 @@ async function test(name,fn){try{await fn();results.push({name,pass:true});conso
   const c=boot();c.run('cloudPersistOutbox()');c.storage.set('feixi-v072-state:cloud-outbox-v1','another tab pending edit');
   assert.throws(()=>c.run('cloudPersistOutbox()'),/另一个页面/);assert.throws(()=>c.run('cloudClearOutbox()'),/另一个页面/);assert.equal(c.storage.get('feixi-v072-state:cloud-outbox-v1'),'another tab pending edit');
  });
+ await test('legacy full outbox remains recoverable after the compact upgrade',()=>{const c=boot();c.run("state.stations[0].currentSituation='legacy pending';var legacy={version:1,snapshot:clone(state),base:clone(cloudSync.syncedState),revisions:Array.from(cloudSync.stationRevisions),metaRevision:cloudSync.metaRevision};localStorage.setItem(CLOUD_OUTBOX_KEY,JSON.stringify(legacy));load()");assert.equal(c.run('state.stations[0].currentSituation'),'legacy pending');assert.equal(c.run('cloudSync.dirty'),true)});
  fs.mkdirSync(path.join(root,'audit-evidence'),{recursive:true});fs.writeFileSync(path.join(root,'audit-evidence/cloudbase-sync-results.json'),JSON.stringify(results,null,2));
  console.log(`${results.filter(r=>r.pass).length}/${results.length} passed`);if(results.some(r=>!r.pass))process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1});

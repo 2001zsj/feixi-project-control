@@ -257,17 +257,22 @@ function cloudStatus(kind,text){
   const retry=document.getElementById('cloudRetrySync');
   if(retry)retry.style.display=cloudSync.writeFailed&&!cloudSync.conflict?'inline-flex':'none';
 }
+function cloudQuotaError(e){return e&&(e.name==='QuotaExceededError'||e.code===22||e.code===1014)}
+function cloudOutboxIDB(mode,raw){return new Promise((resolve,reject)=>{
+ const req=indexedDB.open('fxtt-local-sync',1);req.onupgradeneeded=()=>req.result.createObjectStore('outbox');req.onerror=()=>reject(req.error);
+ req.onsuccess=()=>{const db=req.result,tx=db.transaction('outbox',mode==='read'?'readonly':'readwrite'),store=tx.objectStore('outbox');let result;const get=store.get(CLOUD_OUTBOX_KEY);
+ get.onsuccess=()=>{const existing=get.result||null;result=existing;if(mode==='read')return;if((existing?.raw||null)!==(cloudSync.idbOutboxRaw||null)||localStorage.getItem(CLOUD_OUTBOX_KEY)!==cloudSync.outboxRaw){tx.abort();return}if(mode==='clear')store.delete(CLOUD_OUTBOX_KEY);else store.put({raw,localRaw:cloudSync.outboxRaw},CLOUD_OUTBOX_KEY)};
+ tx.oncomplete=()=>{db.close();if(mode!=='read')cloudSync.idbOutboxRaw=mode==='clear'?null:raw;resolve(result)};tx.onerror=tx.onabort=()=>{db.close();reject(tx.error||Error('另一个页面已更新待同步备份，请先下载本机备份'))};};
+})}
 function cloudPersistOutbox(){
-  if(localStorage.getItem(CLOUD_OUTBOX_KEY)!==cloudSync.outboxRaw)throw Error('另一个页面已更新待同步备份，请先下载本机备份');
-  const raw=JSON.stringify({version:1,writerId:cloudSync.writerId,snapshot:clone(state),base:clone(cloudSync.syncedState),
-    revisions:Array.from(cloudSync.stationRevisions),metaRevision:cloudSync.metaRevision,
-    appliedCommands:Array.from(cloudSync.remoteAppliedCommands)});
-  localStorage.setItem(CLOUD_OUTBOX_KEY,raw);cloudSync.outboxRaw=raw;
+ if(localStorage.getItem(CLOUD_OUTBOX_KEY)!==cloudSync.outboxRaw)throw Error('另一个页面已更新待同步备份，请先下载本机备份');
+ const synced=cloudSync.syncedState||state,ids=state.stations.filter(s=>!cloudSame(cloudStationBundle(state,s.id),cloudStationBundle(synced,s.id))).map(s=>s.id),metaChanged=!cloudSame(cloudStateMeta(state),cloudStateMeta(synced));
+ const compact=src=>({...metaChanged?cloudStateMeta(src):{},stations:src.stations.filter(s=>ids.includes(s.id)),stationUndoHistory:Object.fromEntries(ids.map(id=>[id,src.stationUndoHistory?.[id]||[]])),stationRedoHistory:Object.fromEntries(ids.map(id=>[id,src.stationRedoHistory?.[id]||[]]))});
+ const raw=JSON.stringify({version:1,compact:true,metaChanged,writerId:cloudSync.writerId,snapshot:compact(state),base:compact(synced),revisions:ids.map(id=>[id,cloudSync.stationRevisions.get(id)]),metaRevision:cloudSync.metaRevision,appliedCommands:ids.map(id=>[id,cloudSync.remoteAppliedCommands.get(id)||[]])});
+ if(typeof indexedDB!=='undefined'){cloudSync.durable=(cloudSync.durable||Promise.resolve()).catch(()=>{}).then(()=>cloudOutboxIDB('write',raw));cloudSync.durable.catch(()=>{});return cloudSync.durable}
+ localStorage.setItem(CLOUD_OUTBOX_KEY,raw);cloudSync.outboxRaw=raw;
 }
-function cloudClearOutbox(){
-  if(localStorage.getItem(CLOUD_OUTBOX_KEY)!==cloudSync.outboxRaw)throw Error('另一个页面已更新待同步备份，请先下载本机备份');
-  localStorage.removeItem(CLOUD_OUTBOX_KEY);cloudSync.outboxRaw=null;
-}
+function cloudClearOutbox(){if(localStorage.getItem(CLOUD_OUTBOX_KEY)!==cloudSync.outboxRaw)throw Error('另一个页面已更新待同步备份，请先下载本机备份');const clear=()=>{localStorage.removeItem(CLOUD_OUTBOX_KEY);cloudSync.outboxRaw=null};if(cloudSync.idbOutboxRaw)return cloudOutboxIDB('clear').then(clear);clear()}
 function cloudProtectControls(){
   const app=document.getElementById('app');if(!app)return;
   for(const el of app.querySelectorAll('button,input,select,textarea')){
@@ -279,6 +284,7 @@ function cloudProtectControls(){
 async function cloudRetrySync(){
   if(!cloudSync.ready||cloudSync.conflict||cloudSync.pending||cloudSync.syncing)return;
   cloudSync.writeFailed=false;cloudSync.lastError='';
+  try{await cloudPersistOutbox()}catch(e){cloudSync.writeFailed=true;cloudSync.lastError='待同步备份失败，请勿关闭页面：'+e.message;cloudStatus('bad','本机备份失败');return}
   queueCloudSync(clone(state));await cloudSync.queue;
 }
 function cloudResumeOutbox(remote){
@@ -297,7 +303,7 @@ function cloudResumeOutbox(remote){
     next.stations[next.stations.findIndex(x=>x.id===id)]=clone(s);
     next.stationUndoHistory[id]=clone(after.undo);next.stationRedoHistory[id]=clone(after.redo);
   }
-  if(!cloudSame(cloudStateMeta(local),cloudStateMeta(base))){
+  if((!pending.compact||pending.metaChanged)&&!cloudSame(cloudStateMeta(local),cloudStateMeta(base))){
     if(cloudSync.metaRevision!==pending.metaRevision&&!cloudSame(cloudStateMeta(remote),cloudStateMeta(local))){
       const e=Error('待同步全局数据已被其他人更新');e.code='CLOUD_CONFLICT';throw e;
     }
@@ -385,11 +391,11 @@ async function cloudReadAll(){
 function cloudApplyRemote(next){
   const old=state;
   try{
-    if(old&&!cloudSame(old,next))localStorage.setItem(KEY+':before-cloud-load:'+Date.now(),JSON.stringify(old));
+    if(old&&!cloudSame(old,next)&&!cloudSync.ready&&!localStorage.getItem(KEY+':before-cloud-load'))localStorage.setItem(KEY+':before-cloud-load',JSON.stringify(old));
   }catch(e){}
   state=clone(next);
-  try{saveLocalOnly()}catch(e){state=old;throw e}
-  cloudSync.syncedState=clone(state);
+  try{saveLocalOnly()}catch(e){if(!cloudQuotaError(e)){state=old;throw e}cloudSync.cacheFull=true}
+  cloudSync.syncedState=clone(state);cloudSync.localSavedState=clone(state);
 }
 function cloudConflictError(message,snapshot){
   cloudSync.conflict=true;cloudSync.ready=false;cloudSync.lastError=message||'云端数据冲突';
@@ -458,6 +464,7 @@ function queueCloudSync(snapshot){
     cloudSync.syncing=true;
     try{
       if(cloudSync.writeFailed||cloudSync.conflict)return;
+      await cloudSync.durable;
       await cloudPushSnapshot(snapshot);
     }
     catch(e){
@@ -469,9 +476,9 @@ function queueCloudSync(snapshot){
       cloudSync.syncing=false;cloudSync.pending=Math.max(0,cloudSync.pending-1);
       try{
         if(cloudSync.ready&&!cloudSync.conflict&&!cloudSync.writeFailed&&cloudSync.pending===0){
-          cloudClearOutbox();cloudSync.dirty=false;cloudSync.recovery=null;cloudSync.lastError='';
+          await cloudClearOutbox();cloudSync.dirty=false;cloudSync.recovery=null;cloudSync.lastError='';
           cloudStatus('ok','云端已同步');
-        }else cloudPersistOutbox();
+        }else await cloudPersistOutbox();
       }catch(e){cloudSync.dirty=true;cloudSync.writeFailed=true;cloudSync.lastError=e.message;cloudStatus('bad','本机备份失败')}
     }
   }).catch(()=>{});
@@ -623,7 +630,7 @@ async function cloudApplyRemoteCommand(cmd){
     state.stationUndoHistory=state.stationUndoHistory||{};state.stationRedoHistory=state.stationRedoHistory||{};
     if(Array.isArray(savedBundle.undo)&&savedBundle.undo.length)state.stationUndoHistory[id]=clone(savedBundle.undo);else delete state.stationUndoHistory[id];
     delete state.stationRedoHistory[id];
-    saveLocalOnly();cloudSync.syncedState=clone(state);
+    try{saveLocalOnly()}catch(e){if(!cloudQuotaError(e))throw e;cloudSync.cacheFull=true}cloudSync.syncedState=clone(state);cloudSync.localSavedState=clone(state);
   }
   return true;
 }
@@ -655,8 +662,8 @@ function bindCloudTools(){
       if(!confirm('本机有未同步修改。确认保留本机备份并读取云端？未同步修改不会提交到云端。'))return;
       try{
         localStorage.setItem(KEY+':cloud-conflict-backup:'+Date.now(),JSON.stringify(state));
-        localStorage.setItem(KEY+':cloud-outbox-archive:'+Date.now(),localStorage.getItem(CLOUD_OUTBOX_KEY)||'');
-        cloudClearOutbox();
+        localStorage.setItem(KEY+':cloud-outbox-archive:'+Date.now(),cloudSync.idbOutboxRaw||localStorage.getItem(CLOUD_OUTBOX_KEY)||'');
+        await cloudClearOutbox();
       }catch(e){alert('备份失败，已保留当前修改：'+e.message);return}
       cloudSync.dirty=false;cloudSync.writeFailed=false;cloudSync.recovery=null;cloudSync.conflict=false;cloudSync.ready=false;
     }
@@ -694,7 +701,7 @@ async function startCloud(){
     }
     if(cloudSync.recovery){
       const resumed=cloudResumeOutbox(remote);
-      cloudSync.syncedState=clone(remote);state=resumed;saveLocalOnly();
+      cloudSync.syncedState=clone(remote);state=resumed;cloudSync.localSavedState=clone(state);try{saveLocalOnly()}catch(e){if(!cloudQuotaError(e))throw e;cloudSync.cacheFull=true}
       cloudSync.ready=true;cloudSync.writeFailed=false;cloudPersistOutbox();queueCloudSync(clone(state));
     }else{cloudApplyRemote(remote);cloudSync.ready=true;cloudStatus('ok','云端已同步')}
     cloudSync.empty=false;cloudInitButton(false);migrateLegacyModuleOrders();render();
@@ -1679,7 +1686,12 @@ function revertConstructionScreenshotUpdates(input){
   return result;
 }
 let storageSnapshot=null;
-function load(){
+function load(){loadLocalOnly();if(typeof indexedDB==='undefined')return;return cloudOutboxIDB('read').then(record=>{
+ if(!record)return;if(record.localRaw!==localStorage.getItem(CLOUD_OUTBOX_KEY))throw Error('另一页面待同步备份发生变化，请先下载本机备份');const pending=JSON.parse(record.raw);cloudSync.idbOutboxRaw=record.raw;const full=clone(state);if(pending.metaChanged)Object.assign(full,clone(cloudStateMeta(pending.snapshot)));
+ for(const s of pending.snapshot.stations){const i=full.stations.findIndex(x=>x.id===s.id);if(i<0)full.stations.push(clone(s));else full.stations[i]=clone(s)}full.stationUndoHistory={...(full.stationUndoHistory||{}),...clone(pending.snapshot.stationUndoHistory||{})};full.stationRedoHistory={...(full.stationRedoHistory||{}),...clone(pending.snapshot.stationRedoHistory||{})};
+ cloudValidateState(full);state=full;cloudSync.recovery=pending;cloudSync.syncedState=clone(full);for(const s of pending.base.stations){const i=cloudSync.syncedState.stations.findIndex(x=>x.id===s.id);cloudSync.syncedState.stations[i]=clone(s)}cloudSync.syncedState.stationUndoHistory={...full.stationUndoHistory,...clone(pending.base.stationUndoHistory||{})};cloudSync.syncedState.stationRedoHistory={...full.stationRedoHistory,...clone(pending.base.stationRedoHistory||{})};if(pending.metaChanged)Object.assign(cloudSync.syncedState,cloudStateMeta(pending.base));cloudSync.stationRevisions=new Map(pending.revisions);cloudSync.metaRevision=pending.metaRevision;cloudSync.dirty=true;
+})}
+function loadLocalOnly(){
   const raw=localStorage.getItem(KEY);storageSnapshot=raw;
   const outbox=localStorage.getItem(CLOUD_OUTBOX_KEY);
   cloudSync.outboxRaw=outbox;
@@ -1687,8 +1699,10 @@ function load(){
     const pending=JSON.parse(outbox);
     if(pending.version!==1||!Array.isArray(pending.revisions)||!pending.base)throw Error('待同步备份格式异常，已保留原始数据');
     cloudValidateState(pending.snapshot);cloudValidateState(pending.base);
-    state=clone(pending.snapshot);cloudSync.recovery=pending;cloudSync.dirty=true;
-    cloudSync.syncedState=clone(pending.base);cloudSync.stationRevisions=new Map(pending.revisions);cloudSync.metaRevision=pending.metaRevision;
+    let cached={stations:[],stationUndoHistory:{},stationRedoHistory:{}};try{if(raw)cached=JSON.parse(raw)}catch(e){}
+    const expand=src=>{if(!pending.compact)return clone(src);const full=pending.metaChanged?{...clone(src)}:clone(cached);full.stations=clone(cached.stations||[]);for(const st of src.stations){const i=full.stations.findIndex(x=>x.id===st.id);if(i<0)full.stations.push(clone(st));else full.stations[i]=clone(st)}full.stationUndoHistory={...(cached.stationUndoHistory||{}),...clone(src.stationUndoHistory||{})};full.stationRedoHistory={...(cached.stationRedoHistory||{}),...clone(src.stationRedoHistory||{})};return full};
+    state=expand(pending.snapshot);cloudSync.recovery=pending;cloudSync.dirty=true;
+    cloudSync.syncedState=expand(pending.base);cloudSync.stationRevisions=new Map(pending.revisions);cloudSync.metaRevision=pending.metaRevision;
     cloudSync.remoteAppliedCommands=new Map(pending.appliedCommands||[]);
     return;
   }
@@ -1735,14 +1749,14 @@ function saveLocalOnly(){
     localStorage.setItem(KEY,next);
     storageSnapshot=next;
   }catch(e){
-    alert('保存失败，当前修改尚未保存。请勿关闭页面。'+(e.message||'请检查浏览器存储空间'));
+    if(!cloudQuotaError(e))alert('保存失败，当前修改尚未保存。请勿关闭页面。'+(e.message||'请检查浏览器存储空间'));
     throw e;
   }
 }
 function save(){
   if(!cloudSync.ready||cloudSync.conflict)throw Error('云端尚未就绪，请连接后再修改');
   if(localStorage.getItem(KEY)!==storageSnapshot)throw Error('另一个页面已更新数据，请先备份并刷新');
-  const prior=storageSnapshot?JSON.parse(storageSnapshot):cloudSync.syncedState;
+  const prior=cloudSync.localSavedState||(storageSnapshot?JSON.parse(storageSnapshot):cloudSync.syncedState);
   try{
     for(const station of state.stations){
       const before=prior?.stations?.find(s=>s.id===station.id);
@@ -1753,8 +1767,9 @@ function save(){
   }catch(e){if(prior)state=clone(prior);alert('修改未保存：'+e.message);throw e}
   finally{historyRestoreIds.clear()}
   cloudSync.editEpoch++;cloudSync.dirty=true;
-  cloudPersistOutbox();
-  saveLocalOnly();
+  try{cloudPersistOutbox()}catch(e){cloudSync.writeFailed=true;cloudSync.lastError='待同步修改暂存在当前页面，请下载完整备份并勿关闭页面：'+e.message;cloudStatus('bad','本机备份失败');alert(cloudSync.lastError);return}
+  try{saveLocalOnly()}catch(e){if(!cloudQuotaError(e))throw e;cloudSync.cacheFull=true}
+  cloudSync.localSavedState=clone(state);
   if(cloudSync.ready&&!cloudSync.conflict)queueCloudSync(clone(state));
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -2679,7 +2694,7 @@ function initDailyTools(){
 let renderedRouteKey=null;
 function render(){if(moduleDrag)return;try{if(!state.stations.length){app.innerHTML='<div class="panel"><div class="empty"><b>数据未加载</b><p>请连接云端后查看站点。</p><a href="https://fxtt-feixi.pages.dev/">打开线上系统</a></div></div>';return}const r=route(),routeKey=location.hash||'#home',routeChanged=routeKey!==renderedRouteKey;if(r.page==='new-station')renderNewStation();else if(r.page==='home')renderHome();else if(r.page==='hold')renderList('hold');else if(r.page==='selection')renderList('selection');else if(r.page==='difficult')renderList('difficult');else if(r.page==='pending')renderList('pending');else if(r.page==='building')renderList('building');else if(r.page==='after')renderList('building');else if(r.page==='complete')renderList('complete');else if(r.page==='schedule')renderList('building');else if(r.page.startsWith('calendar'))renderCalendar();else if(r.page==='station')renderStation(r.id);else if(r.page==='search')renderList('all',{q:r.q});else renderHome();renderDailyTools();cloudProtectControls();renderedRouteKey=routeKey;if(routeChanged&&r.page==='station')window.scrollTo(0,0);const list=history.state?.fxttList;if(list&&document.querySelector('.module-list'))requestAnimationFrame(()=>window.scrollTo(0,list.scroll||0))}catch(e){document.getElementById('app').innerHTML='<div class="err"><b>页面加载失败</b><br>'+esc(e&&e.message||e)+'</div>';console.error(e)}}
 async function boot(){
-  try{load()}catch(e){document.getElementById('app').innerHTML='<div class="err">'+esc(e.message)+'</div>';throw e}
+  try{await load()}catch(e){document.getElementById('app').innerHTML='<div class="err">'+esc(e.message)+'</div>';throw e}
   document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>go(b.dataset.page));
   matchMedia('(max-width:720px)').addEventListener('change',e=>document.querySelector('.list-tools')?.toggleAttribute('open',!e.matches));
   document.getElementById('toggleSearch').onclick=()=>{const top=document.querySelector('.top'),open=top.classList.toggle('search-open');document.getElementById('toggleSearch').setAttribute('aria-expanded',String(open));if(open)document.getElementById('globalSearch').focus()};

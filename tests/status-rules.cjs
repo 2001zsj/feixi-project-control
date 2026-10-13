@@ -35,3 +35,16 @@ run("early.entryDate='2026-10-01';applyStationCommand(early,'START_PROJECT',{cod
 assert.throws(()=>run("applyStationCommand(early,'START_PROJECT',{code:'OTHER'})"));
 run("applyStationCommand(early,'CLOSE_PROJECT',{remark:'本地测试归档'});");assert.equal(run('stationModule(early)'),'pending');assert.equal(run('early.pourConfirmed'),false);assert.equal(run('early.constructionStarted'),false);assert.equal(run('early.priorProjectHistory.at(-1).pourConfirmed'),true);assert.equal(run('early.priorProjectHistory.at(-1).constructionBeforeEstablishment'),true);
 console.log('PASS pre-establishment construction: undated pour, no fake code/date/deadline, later establishment retains facts, scoped chronology exception and archived flags');
+
+run(`var basePending={id:'base-pending',selectionDone:true,establishRef:'',establishDate:''};applyStationCommand(basePending,'UPDATE_BASE',{values:{establishRef:' BASE-CODE ',towerName:' new tower ',selectionDone:false,entryDate:'2026-10-06'}});`);
+assert.equal(run('basePending.establishRef'),'BASE-CODE');assert.equal(run('basePending.towerName'),'new tower');assert.equal(run('basePending.establishDate'),'');assert.equal(run('basePending.entryDate'),undefined);assert.equal(run('stationModule(basePending)'),'building');
+run(`var baseEarly={id:'base-early',selectionDone:true,establishRef:'',constructionStarted:true,constructionBeforeEstablishment:true,establishDate:'2026-10-07',entryDate:'2026-10-01',pourDate:'2026-10-06'};var baseBefore=clone(baseEarly);applyStationCommand(baseEarly,'UPDATE_BASE',{values:{establishRef:'EARLY-CODE'}});assertStationChange(baseBefore,baseEarly,today());`);
+assert.equal(run('baseEarly.establishDate'),'2026-10-07');assert.equal(run('baseEarly.entryDate'),'2026-10-01');assert.equal(run('baseEarly.pourDate'),'2026-10-06');
+for(const fixture of ["{id:'selection'}","{id:'hold',selectionHold:true}","{id:'complete',completeConfirmed:true}","{id:'old-code',establishRef:'OLD-CODE'}"]){
+ run(`var blockedBase=${fixture};var blockedBefore=clone(blockedBase);`);
+ assert.throws(()=>run(`applyStationCommand(blockedBase,'UPDATE_BASE',{values:{establishRef:'NEW-CODE',towerName:'must not change'}})`));
+ assert.equal(run('JSON.stringify(blockedBase)'),run('JSON.stringify(blockedBefore)'));
+}
+assert.throws(()=>run(`applyStationCommand(basePending,'UPDATE_BASE',{values:{establishRef:'',towerName:'must not change'}})`));assert.equal(run('basePending.towerName'),'new tower');
+run(`applyStationCommand(basePending,'UPDATE_BASE',{values:{establishRef:'BASE-CODE',towerName:'another tower'}})`);assert.equal(run('basePending.towerName'),'another tower');
+console.log('PASS base-info project code: first entry, preserved actual nodes/date, whitelisted fields, rejected replacement/clearing without partial edits');

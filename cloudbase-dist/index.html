@@ -841,6 +841,13 @@ function archiveCurrentProject(s,remark){
   s.updates=Array.isArray(s.updates)?s.updates:[];
   s.updates.push({date:today(),text:'项目销项转待立项：'+remark});
 }
+const BASE_EDIT_FIELDS=['demandName','operator','demandOrder','demandDate','demandLng','demandLat','selector','territory','towerName','siteCode','siteLng','siteLat','buildMethod','buildConfig'];
+function canStartProject(s){return !hasProjectCode(s)&&(stationModule(s)==='pending'||(s.constructionStarted&&stationModule(s)==='building'))}
+function setNewProjectCode(s,code,date){
+  s.establishRef=code;if(date!==undefined)s.establishDate=date;s.selectionDone=true;s.currentStage=mainStage(s);
+  s.updates=Array.isArray(s.updates)?s.updates:[];
+  s.updates.push({date:today(),text:'录入新项目编码：'+code+(s.establishDate?'，立项日期 '+s.establishDate:'')});
+}
 function applyStationCommand(s,type,payload={}){
   if(!s||!s.id)throw Error('站点不存在');
   if(type==='SELECTION_DONE'){
@@ -858,11 +865,18 @@ function applyStationCommand(s,type,payload={}){
 
     const code=String(payload.code||'').trim(),date=String(payload.date||'').trim();
     if(!code)throw Error('请填写新的项目编码');
-    if(stationModule(s)!=='pending'&&!(s.constructionStarted&&!hasProjectCode(s)&&stationModule(s)==='building'))throw Error('请先完成选址或销项，再录入新项目');if(date&&validateActualDate(date))throw Error(validateActualDate(date));
+    if(!canStartProject(s))throw Error('请先完成选址或销项，再录入新项目');if(date&&validateActualDate(date))throw Error(validateActualDate(date));
     recordStationUndo(s,'重新立项 / 录入项目编码');
-    s.establishRef=code;s.establishDate=date;s.selectionDone=true;s.currentStage=mainStage(s);s.lastUpdate=today();
-    s.updates=Array.isArray(s.updates)?s.updates:[];
-    s.updates.push({date:today(),text:'录入新项目编码：'+code+(date?'，立项日期 '+date:'')});
+    setNewProjectCode(s,code,date);s.lastUpdate=today();
+  }else if(type==='UPDATE_BASE'){
+    const values=payload.values||{},oldCode=String(s.establishRef||'').trim();
+    const code=Object.prototype.hasOwnProperty.call(values,'establishRef')?String(values.establishRef||'').trim():oldCode;
+    const addingCode=code!==oldCode;
+    if(addingCode&&(!code||!canStartProject(s)))throw Error('请先完成选址或销项，再录入新项目');
+    recordStationUndo(s,addingCode?'编辑基础信息 / 补录项目编码':'编辑基础信息');
+    BASE_EDIT_FIELDS.forEach(k=>{if(Object.prototype.hasOwnProperty.call(values,k))s[k]=String(values[k]??'').trim()});
+    if(addingCode)setNewProjectCode(s,code);
+    s.lastUpdate=today();
   }else if(type==='RETURN_SELECTION'){
     if(stationModule(s)!=='pending')throw Error('请先销项转待立项，再退回选址');
     if(['establishDate','entryDate','pourDate','towerDate','powerDate','supportDate'].some(k=>s[k]))throw Error('仍有施工节点，请先核对历史项目');
@@ -2294,7 +2308,7 @@ if(undoBtn)undoBtn.onclick=()=>{const info=latestStationHistory(id,'undo');if(!i
 if(redoBtn)redoBtn.onclick=()=>{const info=latestStationHistory(id,'redo');if(!info)return;if(!confirm('重做“'+info.label+'”？'))return;try{const done=restoreStationHistory(id,'redo');toast('已重做：'+done.label);renderStation(id)}catch(e){alert(e.message)}};
 bindStationMaintenance(s);
 const editBaseBtn=document.getElementById('editBaseBtn'),baseEdit=document.getElementById('baseEdit');
-if(editBaseBtn&&baseEdit){const projectCode=document.getElementById('be_establishRef');if(projectCode){projectCode.readOnly=true;projectCode.title='项目编码通过站点维护中的立项或销项操作修改'}editBaseBtn.onclick=()=>baseEdit.classList.remove('hide');document.getElementById('cancelBase').onclick=()=>baseEdit.classList.add('hide');document.getElementById('saveBase').onclick=()=>{recordStationUndo(s,'编辑基础信息');const keys=['demandName','operator','demandOrder','demandDate','demandLng','demandLat','selector','territory','towerName','siteCode','siteLng','siteLat','buildMethod','buildConfig'];keys.forEach(k=>{const el=document.getElementById('be_'+k);if(el)s[k]=el.value.trim()});s.lastUpdate=today();save();toast('基础信息已保存');renderStation(id)}}
+if(editBaseBtn&&baseEdit){const projectCode=document.getElementById('be_establishRef');if(projectCode){projectCode.readOnly=!canStartProject(s);projectCode.title=projectCode.readOnly?(hasProjectCode(s)?'已有项目编码，请在站点维护中销项后录入新项目':'请先确认选址完成，再录入项目编码'):'';projectCode.placeholder=projectCode.readOnly?projectCode.title:'输入项目编码'}editBaseBtn.onclick=()=>baseEdit.classList.remove('hide');document.getElementById('cancelBase').onclick=()=>baseEdit.classList.add('hide');document.getElementById('saveBase').onclick=()=>{const values={};[...BASE_EDIT_FIELDS,'establishRef'].forEach(k=>{const el=document.getElementById('be_'+k);if(el)values[k]=el.value.trim()});try{applyStationCommand(s,'UPDATE_BASE',{values});toast('基础信息已保存');renderStation(id)}catch(e){alert(e.message)}}}
 if(isSelection(s)){
   const td=document.getElementById('toggleDifficult');
   if(td)td.onclick=()=>{recordStationUndo(s,s.isDifficultSite?'恢复正常选址':'标记为问题站点');splitSelectionTimes(s);const becomingDifficult=!s.isDifficultSite;if(becomingDifficult&&s.selectionHold){s.selectionHold=false;s.followupEnabled=typeof s.selectionHoldPreviousFollowupEnabled==='boolean'?s.selectionHoldPreviousFollowupEnabled:true;delete s.selectionHoldPreviousFollowupEnabled}s.isDifficultSite=becomingDifficult;if(becomingDifficult){s.selectionProblemStatus='未解决';s.followupEnabled=true}s.lastUpdate=today();save();toast(s.isDifficultSite?'已标记为问题站点':'已恢复为正常选址');renderStation(id)};

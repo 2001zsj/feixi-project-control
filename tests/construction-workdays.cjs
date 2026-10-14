@@ -26,3 +26,16 @@ assert.ok(run('scheduleMeta(s).reason.includes("剩余7个工作日")'),'deadlin
 assert.equal(run('scheduleMeta(s).level'),'warn');
 run(`today=()=> '2026-12-01'`);assert.equal(run('scheduleMeta(s).level'),'bad');
 console.log('PASS natural-day milestones across holidays/year, inclusive workday total and seven-workday warning');
+
+run(`today=()=> '2026-10-14';var roof={id:'roof',constructionType:'rooftop',establishRef:'test-roof',establishDate:'2026-10-12'};`);
+assert.equal(run('scheduleMeta(roof).totalDue'),'2026-11-18','roof site must use 28 inclusive working days');
+assert.equal(run('scheduleMeta({...roof,constructionType:"ground"}).totalDue'),'2026-12-16');
+assert.equal(run('scheduleMeta({...roof,constructionType:undefined}).totalDue'),'2026-12-16');
+assert.ok(run('row(roof,"after").includes("/28工作日")'));assert.ok(run('constructionHtml(roof).includes("/28 工作日")'));
+assert.ok(!run('constructionHtml(roof).includes("48工作日")'));
+assert.equal(run('scheduleMeta({...roof,isPaused:true}).totalDue'),'2026-11-18');
+assert.equal(run('scheduleMeta({...roof,completeConfirmed:true}).totalDue'),'2026-11-18');
+run(`today=()=> '2026-11-09'`);assert.equal(run('scheduleMeta(roof).remain'),7);assert.ok(run('scheduleMeta(roof).reason.includes("28工作日截止剩余7个工作日")'));
+run(`today=()=> '2026-11-10'`);assert.equal(run('scheduleMeta(roof).level'),'bad');
+run(`today=()=> '2026-11-19'`);assert.ok(run('scheduleMeta(roof).reason.includes("超过28个工作日")'));
+console.log('PASS rooftop 28-working-day cycle, ground/default 48, inclusive start, completion/pause, seven-day warning and UI labels');

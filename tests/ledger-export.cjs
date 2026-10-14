@@ -92,6 +92,12 @@ const fixtures=[
   assert.ok(run(`exportXls([{...stale,constructionProblem:true}],'building','',true).sheet`).includes('有施工问题'),'explicit current construction problem must remain');
   const ongoing=run(`exportXls([{...stale,currentSituation:'现场协调未完成，等待进场'}],'building','',true).sheet`);
   assert.ok(ongoing.includes('现场协调未完成，等待进场'),'manual current progress must remain');
+  const roofSheet=run(`exportXls([{...stale,constructionType:'rooftop',establishDate:'2026-10-12'}],'building','',true).sheet`);
+  const roofHeaders=[...roofSheet.match(/<row r="4"[\s\S]*?<\/row>/)[0].matchAll(/<t>(.*?)<\/t>/g)].map(x=>x[1]);
+  const roofCells=[...roofSheet.match(/<row r="5"[\s\S]*?<\/row>/)[0].matchAll(/<c r="([A-Z]+)5"[\s\S]*?(?:<\/c>|\/>)/g)].map(x=>x[0]);
+  assert.ok(!roofHeaders.includes('48工作日截止'));assert.ok(roofCells[roofHeaders.indexOf('建设场景')].includes('楼面站'));
+  assert.ok(roofCells[roofHeaders.indexOf('总工期（工作日）')].includes('<v>28</v>'));
+  assert.ok(roofCells[roofHeaders.indexOf('总工期截止')].includes('<v>'+((Date.UTC(2026,10,18)-Date.UTC(1899,11,30))/86400000)+'</v>'));
   run(`exportXls([],'ledger','总台账')`);
   const empty=unzip(Buffer.from(await blob.arrayBuffer()));
   assert.equal(Object.keys(empty).filter(k=>k.startsWith('xl/worksheets/')).length,7);

@@ -26,7 +26,11 @@ const script=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].repla
     await page.locator('#editBaseBtn').click();assert.equal(await page.locator('#be_establishRef').evaluate(el=>el.readOnly),true);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
    }
-   console.log('PASS '+width+'px: basic-info code entry, retained dates/history, single undo and established-code protection');await page.close();
+   await page.evaluate(()=>{state={stations:[{id:'roof-test',selectionDone:true,demandName:'楼面工期测试',establishRef:'LOCAL-ROOF-ONLY',establishDate:'2026-10-12',entryDate:'2026-10-13'}]};renderStation('roof-test')});
+   await page.locator('#editBaseBtn').click();await page.locator('#be_constructionType').selectOption('rooftop');await page.locator('#saveBase').click();
+   assert.equal(await page.evaluate(()=>stationBy('roof-test').constructionType),'rooftop');assert.equal(await page.evaluate(()=>scheduleMeta(stationBy('roof-test')).totalDue),'2026-11-18');
+   assert((await page.locator('#app').innerText()).includes('/28 工作日'));assert.equal(await page.evaluate(()=>stationBy('roof-test').entryDate),'2026-10-13');
+   console.log('PASS '+width+'px: basic-info code entry, retained dates/history, single undo, established-code protection and rooftop selector/28-day display');await page.close();
   }
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -96,6 +96,7 @@ const fixtures=[
   const roofHeaders=[...roofSheet.match(/<row r="4"[\s\S]*?<\/row>/)[0].matchAll(/<t>(.*?)<\/t>/g)].map(x=>x[1]);
   const roofCells=[...roofSheet.match(/<row r="5"[\s\S]*?<\/row>/)[0].matchAll(/<c r="([A-Z]+)5"[\s\S]*?(?:<\/c>|\/>)/g)].map(x=>x[0]);
   assert.ok(!roofHeaders.includes('48工作日截止'));assert.ok(roofCells[roofHeaders.indexOf('建设场景')].includes('楼面站'));
+  for(const h of ['进场日期','浇筑日期','装塔日期','引电日期','配套日期','养护结束','节点提醒'])assert.ok(!roofHeaders.includes(h),'roof-only export must omit '+h);
   assert.ok(roofCells[roofHeaders.indexOf('总工期（工作日）')].includes('<v>28</v>'));
   assert.ok(roofCells[roofHeaders.indexOf('总工期截止')].includes('<v>'+((Date.UTC(2026,10,18)-Date.UTC(1899,11,30))/86400000)+'</v>'));
   run(`exportXls([],'ledger','总台账')`);

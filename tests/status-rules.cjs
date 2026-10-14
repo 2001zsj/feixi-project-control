@@ -48,3 +48,10 @@ for(const fixture of ["{id:'selection'}","{id:'hold',selectionHold:true}","{id:'
 assert.throws(()=>run(`applyStationCommand(basePending,'UPDATE_BASE',{values:{establishRef:'',towerName:'must not change'}})`));assert.equal(run('basePending.towerName'),'new tower');
 run(`applyStationCommand(basePending,'UPDATE_BASE',{values:{establishRef:'BASE-CODE',towerName:'another tower'}})`);assert.equal(run('basePending.towerName'),'another tower');
 console.log('PASS base-info project code: first entry, preserved actual nodes/date, whitelisted fields, rejected replacement/clearing without partial edits');
+run(`today=()=> '2026-10-14';var roofComplete={id:'roof-done',constructionType:'rooftop',establishRef:'ROOF-CODE',establishDate:'2026-10-12',entryDate:'2026-10-13',pourDate:'2026-10-14',towerDate:'2026-10-15'};`);
+assert.throws(()=>run(`applyStationCommand(roofComplete,'CONFIRM_ROOFTOP_COMPLETE',{date:'2026-10-11'})`));
+assert.throws(()=>run(`applyStationCommand(roofComplete,'CONFIRM_ROOFTOP_COMPLETE',{date:'2026-10-15'})`));
+run(`applyStationCommand(roofComplete,'CONFIRM_ROOFTOP_COMPLETE',{date:'2026-10-14'})`);assert.equal(run('stationModule(roofComplete)'),'complete');assert.equal(run('roofComplete.towerDate'),'2026-10-15');
+run(`applyStationCommand(roofComplete,'CANCEL_COMPLETE')`);assert.equal(run('mainStage(roofComplete)'),'施工中');
+assert.throws(()=>run(`applyStationCommand(basePending,'CONFIRM_ROOFTOP_COMPLETE',{date:'2026-10-14'})`));
+console.log('PASS rooftop completion independent of legacy nodes, actual-date/establishment validation, cancellation and ground rejection');

@@ -2,6 +2,10 @@ const fields=['operator','demandName','demandOrder','demandDate','territory','se
 export function newStationInput(input,asOf){
   if(!input||typeof input!=='object')throw Error('请填写站点资料');
   const data=Object.fromEntries(fields.map(k=>[k,String(input[k]??'').trim()]));
+  if(Object.prototype.hasOwnProperty.call(input,'constructionType')){
+    if(!['','ground','rooftop'].includes(input.constructionType))throw Error('请选择有效的站点类型');
+    data.constructionType=input.constructionType;
+  }
   for(const k of fields)if(data[k].length>(['buildConfig','selectionProgress'].includes(k)?2000:200))throw Error('字段内容过长');
   if(!['移动','电信','联通','广电','搬迁','其他'].includes(data.operator))throw Error('请选择运营商');
   if(!data.demandName)throw Error('请填写需求站名');

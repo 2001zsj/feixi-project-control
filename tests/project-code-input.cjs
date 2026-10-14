@@ -30,6 +30,12 @@ const script=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].repla
    await page.locator('#editBaseBtn').click();await page.locator('#be_constructionType').selectOption('rooftop');await page.locator('#saveBase').click();
    assert.equal(await page.evaluate(()=>stationBy('roof-test').constructionType),'rooftop');assert.equal(await page.evaluate(()=>scheduleMeta(stationBy('roof-test')).totalDue),'2026-11-18');
    assert((await page.locator('#app').innerText()).includes('/28 工作日'));assert.equal(await page.evaluate(()=>stationBy('roof-test').entryDate),'2026-10-13');
+   assert.equal(await page.locator('#saveNode').count(),0);assert.equal(await page.locator('#cureDays').count(),0);
+   page.once('dialog',dialog=>dialog.accept());await page.locator('#saveRoofComplete').click();assert.equal(await page.evaluate(()=>stationModule(stationBy('roof-test'))),'complete');
+   await page.evaluate(()=>{applyStationCommand(stationBy('roof-test'),'CANCEL_COMPLETE');renderStation('roof-test')});
+   await page.locator('#editBaseBtn').click();await page.locator('#be_constructionType').selectOption('ground');await page.locator('#saveBase').click();
+   assert.equal(await page.locator('#saveNode').count(),1);assert.equal(await page.evaluate(()=>stationBy('roof-test').entryDate),'2026-10-13');
+   await page.evaluate(()=>renderNewStation());assert.equal(await page.locator('select[name="constructionType"]').count(),1);await page.locator('select[name="constructionType"]').selectOption('rooftop');
    console.log('PASS '+width+'px: basic-info code entry, retained dates/history, single undo, established-code protection and rooftop selector/28-day display');await page.close();
   }
  }finally{await browser.close()}

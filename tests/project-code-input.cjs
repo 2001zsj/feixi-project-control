@@ -36,6 +36,11 @@ const script=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].repla
    await page.locator('#editBaseBtn').click();await page.locator('#be_constructionType').selectOption('ground');await page.locator('#saveBase').click();
    assert.equal(await page.locator('#saveNode').count(),1);assert.equal(await page.evaluate(()=>stationBy('roof-test').entryDate),'2026-10-13');
    await page.evaluate(()=>renderNewStation());assert.equal(await page.locator('select[name="constructionType"]').count(),1);await page.locator('select[name="constructionType"]').selectOption('rooftop');
+   await page.evaluate(()=>renderStation('roof-test'));page.once('dialog',dialog=>dialog.dismiss());await page.locator('#deleteStation').click();assert.equal(await page.evaluate(()=>!!stationBy('roof-test').deletedAt),false);
+   page.once('dialog',dialog=>dialog.accept());await page.locator('#deleteStation').click();await page.locator('[data-restore-station="roof-test"]').waitFor();
+   assert.equal(await page.evaluate(()=>activeStations().length),0);assert.equal(await page.evaluate(()=>cloudModuleCounts(state).trash),1);
+   await page.evaluate(()=>renderHome());assert((await page.locator('#app').innerText()).includes('0 个站点'));await page.locator('.data-tools > summary').click();await page.locator('[data-go="trash"]').click();await page.evaluate(()=>renderTrash());
+   await page.locator('[data-restore-station="roof-test"]').click();assert.equal(await page.evaluate(()=>stationBy('roof-test').deletedAt),undefined);assert.equal(await page.evaluate(()=>stationBy('roof-test').entryDate),'2026-10-13');
    console.log('PASS '+width+'px: basic-info code entry, retained dates/history, single undo, established-code protection and rooftop selector/28-day display');await page.close();
   }
  }finally{await browser.close()}

@@ -55,3 +55,12 @@ run(`applyStationCommand(roofComplete,'CONFIRM_ROOFTOP_COMPLETE',{date:'2026-10-
 run(`applyStationCommand(roofComplete,'CANCEL_COMPLETE')`);assert.equal(run('mainStage(roofComplete)'),'施工中');
 assert.throws(()=>run(`applyStationCommand(basePending,'CONFIRM_ROOFTOP_COMPLETE',{date:'2026-10-14'})`));
 console.log('PASS rooftop completion independent of legacy nodes, actual-date/establishment validation, cancellation and ground rejection');
+run(`var deletedStation={id:'deleted-test',selectionDone:true,establishRef:'KEEP-CODE',establishDate:'2026-10-12',entryDate:'2026-10-13',priorProjectHistory:[{establishRef:'OLD-CODE'}]};var deleteOriginal=clone(deletedStation);applyStationCommand(deletedStation,'DELETE_STATION');`);
+assert.equal(run('stationModule(deletedStation)'),'trash');assert.equal(run('needsFocus(deletedStation)'),false);assert.ok(run('deletedStation.deletedAt'));
+assert.equal(run('deletedStation.establishRef'),'KEEP-CODE');assert.equal(run('deletedStation.entryDate'),'2026-10-13');
+assert.throws(()=>run(`applyStationCommand(deletedStation,'UPDATE_BASE',{values:{towerName:'must not change'}})`));
+assert.throws(()=>run(`assertStationChange(deletedStation,{...deletedStation,towerName:'must not change'},today())`));
+run(`applyStationCommand(deletedStation,'RESTORE_STATION')`);assert.equal(run('stationModule(deletedStation)'),'building');assert.equal(run('deletedStation.deletedAt'),undefined);
+assert.equal(run('JSON.stringify(deletedStation.priorProjectHistory)'),run('JSON.stringify(deleteOriginal.priorProjectHistory)'));
+assert.equal(run('deletedStation.entryDate'),run('deleteOriginal.entryDate'));
+console.log('PASS station recycle bin: excluded from modules/focus, preserved project/dates/history, deleted edits blocked, recovery returns original module');

@@ -99,6 +99,8 @@ const fixtures=[
   for(const h of ['进场日期','浇筑日期','装塔日期','引电日期','配套日期','养护结束','节点提醒'])assert.ok(!roofHeaders.includes(h),'roof-only export must omit '+h);
   assert.ok(roofCells[roofHeaders.indexOf('总工期（工作日）')].includes('<v>28</v>'));
   assert.ok(roofCells[roofHeaders.indexOf('总工期截止')].includes('<v>'+((Date.UTC(2026,10,18)-Date.UTC(1899,11,30))/86400000)+'</v>'));
+  const deletedSheet=run(`exportXls([{id:'deleted-export',deletedAt:'2026-10-19 10:00',demandName:'DELETED-DO-NOT-EXPORT'}],'building','',true).sheet`);
+  assert.ok(!deletedSheet.includes('DELETED-DO-NOT-EXPORT'));
   run(`exportXls([],'ledger','总台账')`);
   const empty=unzip(Buffer.from(await blob.arrayBuffer()));
   assert.equal(Object.keys(empty).filter(k=>k.startsWith('xl/worksheets/')).length,7);

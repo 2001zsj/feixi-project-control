@@ -12,6 +12,7 @@ on:
       - 'tests/construction-workdays.cjs'
       - 'tests/focus-rules.cjs'
       - 'tests/consistency-rules.cjs'
+      - 'tests/maintenance-rules.cjs'
       - 'tests/ledger-export.cjs'
       - 'tests/mobile-request.cjs'
       - 'tools/station-rules.cjs'
@@ -38,6 +39,7 @@ jobs:
       - run: node tests/construction-workdays.cjs
       - run: node tests/focus-rules.cjs
       - run: node tests/consistency-rules.cjs
+      - run: node tests/maintenance-rules.cjs
       - run: node tests/ledger-export.cjs
       - run: node tests/mobile-request.cjs
       - run: node tools/build-cloudflare-pages.cjs

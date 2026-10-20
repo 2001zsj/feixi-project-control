@@ -2076,6 +2076,14 @@ function ruleNodeError(s,key,date,asOf){
 }
 function assertStationChange(before,after,asOf,historyRestore=false){
   if(!before||!after||before.id!==after.id)throw Error('站点ID不可修改');
+  if(after.constructionType!==undefined&&!['','ground','rooftop'].includes(after.constructionType))throw Error('请选择有效的站点类型');
+  if(after.deletedAt!==undefined&&after.deletedAt!==''){
+    if(typeof after.deletedAt!=='string'||!/^\d{4}-\d{2}-\d{2} ([01]\d|2[0-3]):[0-5]\d$/.test(after.deletedAt)||ruleDateError(after.deletedAt.slice(0,10),asOf))throw Error('删除时间无效');
+  }
+  if(!historyRestore&&!!before.deletedAt!==!!after.deletedAt){
+    const keys=new Set([...Object.keys(before),...Object.keys(after)]);
+    for(const key of keys)if(!['deletedAt','lastUpdate'].includes(key)&&!ruleSame(before[key],after[key]))throw Error('删除或恢复站点时不能同时修改业务资料');
+  }
   if(!historyRestore&&before.deletedAt&&after.deletedAt&&!ruleSame(before,after))throw Error('站点已删除，请先从回收站恢复');
   for(const key of ['selectionDoneDate','establishDate','entryDate','pourDate','towerDate','powerDate','supportDate','completeDate']){
     if(after[key]&&!ruleSame(before[key],after[key])){const error=ruleNodeError(after,key,after[key],asOf);if(error)throw Error(error)}
@@ -2150,10 +2158,10 @@ function smartQueue(){
 function smartDataIssues(){
   const out=[];
   for(const s of activeStations()){
-    if(isComplete(s))continue;
+    if(isComplete(s)||s.constructionType==='rooftop')continue;
     if(s.pourDate&&!s.entryDate)out.push({s,level:'bad',reason:'已录浇筑日期，但没有实际进场日期'});
     if(s.towerDate&&!s.pourDate)out.push({s,level:'bad',reason:'已录装塔日期，但没有浇筑日期'});
-    if(s.establishDate&&s.entryDate&&s.entryDate<s.establishDate)out.push({s,level:'bad',reason:'进场日期早于立项日期'});
+    if(!s.constructionBeforeEstablishment&&s.establishDate&&s.entryDate&&s.entryDate<s.establishDate)out.push({s,level:'bad',reason:'进场日期早于立项日期'});
     if(s.entryDate&&s.pourDate&&s.pourDate<s.entryDate)out.push({s,level:'bad',reason:'浇筑日期早于进场日期'});
   }
   return out;

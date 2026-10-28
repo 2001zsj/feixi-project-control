@@ -53,6 +53,10 @@ assert.ok(run('ruleNodeError(roof,"completeDate","2026-10-11","2026-10-26")'));
 console.log('PASS rooftop total-only flow: no node deadlines, curing, timeline or chronology dependency; completion still validated');
 
 assert.equal(run('CN_MAINLAND_CALENDAR[2027].status'),'pending');
+for(const date of ['2027-01-01','2027-01-02','2027-01-03'])assert.equal(run(`isCnHolidayOff('${date}')`),true);
+assert.equal(run('isCnHolidayOff("2027-01-04")'),false);
+assert.equal(run('CN_MAINLAND_CALENDAR[2027].holidays.flatMap(h=>h.work).length'),0);
+assert.equal(run('(calendarMonthHtml(2027,1).match(/class="calbadge"/g)||[]).length'),3);
 assert.equal(run('isCalendarConfiguredDate("2027-01-04")'),false);
 assert.equal(run('isConstructionWorkday("2027-01-04")'),null);
 assert.equal(run('calendarRangeConfigured("2026-12-31","2027-01-04")'),false);
@@ -63,6 +67,7 @@ assert.equal(run('calendarWorkdayStats(2027).work'),null);
 assert.equal(run('calendarMonthHtml(2027,2).match(/class="calnum"/g).length'),28);
 run(`var app={innerHTML:''};navOn=()=>{};var location={hash:'#calendar?year=2027'};var document={querySelectorAll:()=>[]};renderCalendar();`);
 assert.ok(run('app.innerHTML.includes("2027年全年日历")'));
+assert.ok(run('app.innerHTML.includes("共3天，不调休")'));
 assert.equal(run('(app.innerHTML.match(/class="calmonth-title"/g)||[]).length'),12);
 assert.ok(!run('app.innerHTML.includes("2027年官方")'));
 assert.ok(!run('app.innerHTML.includes("查看国务院原文")'));

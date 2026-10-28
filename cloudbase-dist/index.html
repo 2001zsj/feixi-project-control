@@ -1892,13 +1892,14 @@ const CN_MAINLAND_CALENDAR={
       {name:'中秋节',off:['2026-09-25','2026-09-26','2026-09-27'],work:[]},
       {name:'国庆节',off:['2026-10-01','2026-10-02','2026-10-03','2026-10-04','2026-10-05','2026-10-06','2026-10-07'],work:['2026-09-20','2026-10-10']}
     ]
-  }
+  },
+  2027:{status:'pending',source:'2027年国务院放假调休安排待公布',sourceUrl:'',holidays:[]}
 };
 function calendarForDate(s){
   const y=Number(String(s||'').slice(0,4));
   return CN_MAINLAND_CALENDAR[y]||null;
 }
-function isCalendarConfiguredDate(s){return !!calendarForDate(s)}
+function isCalendarConfiguredDate(s){return calendarForDate(s)?.status==='official'}
 function isCnHolidayOff(s){
   const cal=calendarForDate(s);
   return !!(cal&&cal.holidays.some(h=>h.off.includes(String(s||''))));
@@ -1917,7 +1918,7 @@ function mainlandCalendarDayType(s){
 function calendarRangeConfigured(a,b){
   const x=parseDate(a),y=parseDate(b);if(!x||!y)return false;
   const sy=Math.min(x.getFullYear(),y.getFullYear()),ey=Math.max(x.getFullYear(),y.getFullYear());
-  for(let yr=sy;yr<=ey;yr++)if(!CN_MAINLAND_CALENDAR[yr])return false;
+  for(let yr=sy;yr<=ey;yr++)if(CN_MAINLAND_CALENDAR[yr]?.status!=='official')return false;
   return true;
 }
 function isConstructionWorkday(s){
@@ -2406,9 +2407,10 @@ function calendarMonthHtml(year,month){
   for(let i=0;i<start;i++)cells+='<div class="calday blank"></div>';
   for(let day=1;day<=last;day++){
     const ds=year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    const type=mainlandCalendarDayType(ds),name=holidayNameForDate(ds);
+    const pending=CN_MAINLAND_CALENDAR[year]?.status!=='official';
+    const type=pending?(new Date(year,month-1,day).getDay()%6===0?'weekend':'normal'):mainlandCalendarDayType(ds),name=holidayNameForDate(ds);
     const badge=type==='holiday'?'休':type==='makeup-work'?'班':'';
-    const tip=(name?name+' · ':'')+(type==='holiday'?'法定放假，不计工期':type==='makeup-work'?'调休上班，计入工期':type==='weekend'?'普通周末，不计工期':'工作日，计入工期');
+    const tip=pending?'放假调休待公布，暂不计工期':(name?name+' · ':'')+(type==='holiday'?'法定放假，不计工期':type==='makeup-work'?'调休上班，计入工期':type==='weekend'?'普通周末，不计工期':'工作日，计入工期');
     cells+='<div class="calday '+type+(ds===today()?' today':'')+'" title="'+esc(tip)+'"><span class="calnum">'+day+'</span>'+(badge?'<span class="calbadge">'+badge+'</span>':'')+'</div>';
   }
   return '<section class="calmonth"><div class="calmonth-title">'+year+'年'+month+'月</div><div class="calgrid">'+heads+cells+'</div></section>';
@@ -2424,30 +2426,30 @@ function calendarWorkdayStats(year){
     else if(t==='normal')work++;
     d.setDate(d.getDate()+1);
   }
-  return {work,weekend,holiday,makeup};
+  return CN_MAINLAND_CALENDAR[year]?.status==='official'?{work,weekend,holiday,makeup}:{work:null,weekend:null,holiday:null,makeup:null};
 }
 function renderCalendar(){
   navOn('calendar');
   const years=Object.keys(CN_MAINLAND_CALENDAR).map(Number).sort((a,b)=>b-a);
   const requested=Number(new URLSearchParams(location.hash.split('?')[1]||'').get('year'));
   const year=CN_MAINLAND_CALENDAR[requested]?requested:(CN_MAINLAND_CALENDAR[new Date().getFullYear()]?new Date().getFullYear():years[0]);
-  const cal=CN_MAINLAND_CALENDAR[year],stats=calendarWorkdayStats(year);
+  const cal=CN_MAINLAND_CALENDAR[year],stats=calendarWorkdayStats(year),official=cal.status==='official';
   const todayType=mainlandCalendarDayType(today());
   const typeText=todayType==='holiday'?'法定放假日（不计工期）':todayType==='makeup-work'?'调休上班日（计入工期）':todayType==='weekend'?'普通周末（不计工期）':todayType==='normal'?'正常工作日（计入工期）':'年度日历未配置';
   const months=Array.from({length:12},(_,i)=>calendarMonthHtml(year,i+1)).join('');
   const rows=cal.holidays.map(h=>`<tr><td><b>${esc(h.name)}</b></td><td>${esc(h.off.join('、'))}</td><td>${esc(h.work.length?h.work.join('、'):'—')}</td></tr>`).join('');
   app.innerHTML=`<div class="title"><h1>中国大陆工作日日历</h1><span class="muted">施工总工期的统一计算底表</span></div>
-  <div class="summary">${years.map(y=>`<button data-calyear="${y}">${y}年 <b class="${y===year?'blue':''}">${CN_MAINLAND_CALENDAR[y].status==='official'?'官方':'待配置'}</b></button>`).join('')}</div>
-  <section class="panel"><div class="ph"><b>${year}年官方工作日日历</b><span class="sp"></span><a class="btn" href="${esc(cal.sourceUrl||'#')}" target="_blank" rel="noopener">查看国务院原文</a></div><div class="pb">
-    <div class="ok"><b>计算规则：</b>周一至周五正常计入；普通周六、周日不计；国务院公布的放假日期不计；国务院公布的调休上班日计入。立项当天如为工作日记第1个工作日。所有放假、调休覆盖日期均来自国务院办公厅正式通知，不自行推测。</div>
-    <div class="callegend"><span><i class="legend-dot normal"></i>工作日</span><span><i class="legend-dot weekend"></i>普通周末</span><span><i class="legend-dot holiday"></i>法定放假</span><span><i class="legend-dot makeup-work"></i>调休上班</span></div>
-    <div class="base calstats"><div><div class="lab">今日</div><div class="val">${today()}</div></div><div><div class="lab">今日性质</div><div class="val">${esc(typeText)}</div></div><div><div class="lab">全年计入工期工作日</div><div class="val">${stats.work}天</div></div><div><div class="lab">官方放假覆盖</div><div class="val">${stats.holiday}天</div></div><div><div class="lab">调休上班</div><div class="val">${stats.makeup}天</div></div></div>
+  <div class="summary">${years.map(y=>`<button data-calyear="${y}">${y}年 <b class="${y===year?'blue':''}">${CN_MAINLAND_CALENDAR[y].status==='official'?'官方':'调休待公布'}</b></button>`).join('')}</div>
+  <section class="panel"><div class="ph"><b>${year}年${official?'官方工作日':'全年'}日历</b><span class="sp"></span>${official?`<a class="btn" href="${esc(cal.sourceUrl)}" target="_blank" rel="noopener">查看国务院原文</a>`:''}</div><div class="pb">
+    ${official?'<div class="ok"><b>计算规则：</b>周一至周五正常计入；普通周六、周日不计；国务院公布的放假日期不计；国务院公布的调休上班日计入。立项当天如为工作日记第1个工作日。</div>':'<div class="warn">放假调休安排待公布，当前仅显示日期和周末。涉及本年的总工期暂不计算。</div>'}
+    <div class="callegend"><span><i class="legend-dot normal"></i>${official?'工作日':'周一至周五'}</span><span><i class="legend-dot weekend"></i>普通周末</span>${official?'<span><i class="legend-dot holiday"></i>法定放假</span><span><i class="legend-dot makeup-work"></i>调休上班</span>':''}</div>
+    <div class="base calstats"><div><div class="lab">今日</div><div class="val">${today()}</div></div><div><div class="lab">今日性质</div><div class="val">${esc(typeText)}</div></div><div><div class="lab">全年计入工期工作日</div><div class="val">${official?stats.work+'天':'待公布'}</div></div><div><div class="lab">官方放假覆盖</div><div class="val">${official?stats.holiday+'天':'待公布'}</div></div><div><div class="lab">调休上班</div><div class="val">${official?stats.makeup+'天':'待公布'}</div></div></div>
     <div class="calyear">${months}</div>
   </div></section>
-  <section class="panel"><div class="ph"><b>国务院放假调休清单</b><span class="sp"></span><span class="tag g">唯一节假日规则源</span></div><div class="pb">
+  ${official?`<section class="panel"><div class="ph"><b>国务院放假调休清单</b><span class="sp"></span><span class="tag g">唯一节假日规则源</span></div><div class="pb">
     <div class="muted" style="margin-bottom:7px">${esc(cal.source)}</div>
     <div style="overflow:auto"><table class="caltable"><thead><tr><th>节日</th><th>官方放假日期（不计工期）</th><th>官方调休上班日（计入工期）</th></tr></thead><tbody>${rows}</tbody></table></div>
-  </div></section>
+  </div></section>`:''}
   <section class="panel"><div class="ph"><b>自动计算说明</b></div><div class="pb"><div class="muted">施工站的“当前第几个工作日、总工期截止、剩余工作日、是否超期”全部查询这张年度日历。若工期跨入尚未录入国务院正式安排的年份，系统停止给出自动截止日期并提示补充官方年度日历。</div></div></section>`;
   document.querySelectorAll('[data-calyear]').forEach(b=>b.onclick=()=>{location.hash='calendar?year='+b.dataset.calyear});
 }

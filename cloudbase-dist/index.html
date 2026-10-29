@@ -1893,13 +1893,13 @@ const CN_MAINLAND_CALENDAR={
       {name:'国庆节',off:['2026-10-01','2026-10-02','2026-10-03','2026-10-04','2026-10-05','2026-10-06','2026-10-07'],work:['2026-09-20','2026-10-10']}
     ]
   },
-  2027:{status:'pending',source:'用户暂定安排；2027年国务院正式放假调休安排待公布',sourceUrl:'',holidays:[{name:'元旦（暂定）',off:['2027-01-01','2027-01-02','2027-01-03'],work:[]}]}
+  2027:{status:'pending',provisionalThrough:'2027-01-31',source:'用户暂定安排；2027年国务院正式放假调休安排待公布',sourceUrl:'',holidays:[{name:'元旦（暂定）',off:['2027-01-01','2027-01-02','2027-01-03'],work:[]}]}
 };
 function calendarForDate(s){
   const y=Number(String(s||'').slice(0,4));
   return CN_MAINLAND_CALENDAR[y]||null;
 }
-function isCalendarConfiguredDate(s){return calendarForDate(s)?.status==='official'}
+function isCalendarConfiguredDate(s){const cal=calendarForDate(s);return cal?.status==='official'||!!(cal?.provisionalThrough&&String(s)>=String(s).slice(0,4)+'-01-01'&&String(s)<=cal.provisionalThrough)}
 function isCnHolidayOff(s){
   const cal=calendarForDate(s);
   return !!(cal&&cal.holidays.some(h=>h.off.includes(String(s||''))));
@@ -1918,7 +1918,7 @@ function mainlandCalendarDayType(s){
 function calendarRangeConfigured(a,b){
   const x=parseDate(a),y=parseDate(b);if(!x||!y)return false;
   const sy=Math.min(x.getFullYear(),y.getFullYear()),ey=Math.max(x.getFullYear(),y.getFullYear());
-  for(let yr=sy;yr<=ey;yr++)if(CN_MAINLAND_CALENDAR[yr]?.status!=='official')return false;
+  for(let yr=sy;yr<=ey;yr++){const end=yr===ey?localDateStr(x>y?x:y):yr+'-12-31';if(!isCalendarConfiguredDate(end))return false;}
   return true;
 }
 function isConstructionWorkday(s){
@@ -2002,11 +2002,13 @@ function rooftopScheduleMeta(s){
   const remain=totalDue&&!complete?constructionUntil(totalDue):null;
   let level=complete?'ok':!active?'pending':remain===null?'warn':'ok',reason=complete?'整站已完成':!active?'未启动28个工作日工期':remain===null?'工期跨入未配置年度，暂停自动判断':'';
   if(!complete&&remain!==null){if(remain<0){level='bad';reason='已超过28个工作日总建设周期'}else if(remain<=6){level='bad';reason='距28工作日截止仅剩'+remain+'个工作日'}else if(remain===7){level='warn';reason='工期预警：距28工作日截止剩余7个工作日'}}
+  if(totalDue&&calendarForDate(totalDue)?.status!=='official')reason+=(reason?'；':'')+'截止日期按2027年1月暂定日历计算，待官方安排复核';
   return {level,stage:mainStage(s),next:complete?'':'整站完成',due:totalDue,totalDue,remain,reason,nodeOverdue:false,entryDue:'',pourDue:'',cureEnd:'',historicalDelay:'',earlyTower:false};
 }
 function scheduleMeta(s){if(s.constructionType==='rooftop')return rooftopScheduleMeta(s);const cycle=constructionWorkdays(s);if(isComplete(s))return {level:'ok',nodeOverdue:false,stage:'整站完成',next:'',due:'',reason:s.completeDate?'整站已完成':'整站已确认完成，完工日期待补充',totalDue:s.establishDate?addConstructionDays(s.establishDate,cycle):'',remain:null,entryDue:s.establishDate?addDate(s.establishDate,7):'',pourDue:s.entryDate?addDate(s.entryDate,5):'',cureEnd:cureEnd(s)};if(!hasProjectCode(s)||!s.establishDate){const nm=nodeDeadlineMeta(s);return {level:'pending',...nm,stage:preEstStage(s),next:hasProjectCode(s)?'录入立项日期':'补充项目编码',due:'',totalDue:'',remain:null,cureEnd:cureEnd(s),reason:`未启动${cycle}个工作日工期`+(nm.reason?'；'+nm.reason:'')}};const totalDue=addConstructionDays(s.establishDate,cycle);if(!totalDue||constructionUntil(totalDue)===null||(s.pourDate&&!cureEnd(s))){const nm=nodeDeadlineMeta(s);return {level:'warn',...nm,stage:mainStage(s),next:'补充年度大陆日历',due:'',reason:'工期跨入未配置年度，暂停自动判断'+(nm.reason?'；'+nm.reason:''),totalDue:'',remain:null,cureEnd:cureEnd(s)}};const remain=constructionUntil(totalDue),nm=nodeDeadlineMeta(s),entryDue=nm.entryDue,pourDue=nm.pourDue,ce=cureEnd(s);let stage=mainStage(s),next='',dueDate='',reason='',level='ok',nodeOverdue=nm.nodeOverdue;if(s.pourConfirmed&&!s.pourDate){next='补录实际浇筑日期';dueDate=''}else if(!s.entryDate){next='进场放线';dueDate=entryDue;if(until(entryDue)<0){level='warn';nodeOverdue=true;reason='节点逾期：进场已超过立项后7个自然日期限'}}else if(!s.pourDate){next='完成浇筑';dueDate=pourDue;if(until(pourDue)<0){level='warn';nodeOverdue=true;reason='节点逾期：浇筑已超过进场后5个自然日期限'}}else if(!s.towerDate&&ce&&until(ce)>0){next='养护结束';dueDate=ce;const after=constructionDaysBetween(ce,totalDue);if(after!==null&&after<5){level='warn';reason=after<0?`养护结束已超出${cycle}工作日总工期，需调整施工安排`:'养护结束后留给装塔和闭环不足5个工作日'}}else if(!s.towerDate){next='安排装塔';dueDate=totalDue}else{const missing=[];if(!s.powerDate)missing.push('引电');if(!s.supportDate)missing.push('配套');if(missing.length){next='完成'+missing.join('、');dueDate=totalDue}else{next='整站确认';dueDate=totalDue;if(remain!==null&&remain<=7){level='warn';reason='主要专业已完成，尽快整站闭环'}}}
 if(remain!==null&&remain<0){level='bad';reason=`已超过${cycle}个工作日总建设周期`}else if(remain!==null&&remain<=6){level='bad';reason=(reason?reason+'；':'')+`距${cycle}工作日截止仅剩`+remain+'个工作日'}else if(remain===7){if(level==='ok')level='warn';reason=(reason?reason+'；':'')+`工期预警：距${cycle}工作日截止剩余7个工作日`}else if(s.isPaused&&level==='ok'){level='warn';reason=`当前施工暂停，${cycle}个工作日仍继续计时`}
 if(nm.nodeOverdue){if(level==='ok')level='warn';if(nm.reason&&!reason.includes(nm.reason))reason=(reason?reason+'；':'')+nm.reason}
+if(calendarForDate(totalDue)?.status!=='official')reason+=(reason?'；':'')+'截止日期按2027年1月暂定日历计算，待官方安排复核';
 return {level,nodeOverdue,stage,next,due:dueDate,reason,totalDue,remain,entryDue,pourDue,cureEnd:ce,historicalDelay:nm.historicalDelay,earlyTower:!!(s.towerDate&&ce&&s.towerDate<ce)}}
 function isNodeOverdue(s,m){return !!(m&&m.nodeOverdue)}
 function hasConstructionProblem(s){return !!(s&&s.constructionProblem===true)}
@@ -2441,7 +2443,7 @@ function renderCalendar(){
   app.innerHTML=`<div class="title"><h1>中国大陆工作日日历</h1><span class="muted">施工总工期的统一计算底表</span></div>
   <div class="summary">${years.map(y=>`<button data-calyear="${y}">${y}年 <b class="${y===year?'blue':''}">${CN_MAINLAND_CALENDAR[y].status==='official'?'官方':'调休待公布'}</b></button>`).join('')}</div>
   <section class="panel"><div class="ph"><b>${year}年${official?'官方工作日':'全年'}日历</b><span class="sp"></span>${official?`<a class="btn" href="${esc(cal.sourceUrl)}" target="_blank" rel="noopener">查看国务院原文</a>`:''}</div><div class="pb">
-    ${official?'<div class="ok"><b>计算规则：</b>周一至周五正常计入；普通周六、周日不计；国务院公布的放假日期不计；国务院公布的调休上班日计入。立项当天如为工作日记第1个工作日。</div>':'<div class="warn">元旦暂按1月1日至3日放假，共3天，不调休。全年安排待正式公布后更新，涉及本年的总工期暂不计算。</div>'}
+    ${official?'<div class="ok"><b>计算规则：</b>周一至周五正常计入；普通周六、周日不计；国务院公布的放假日期不计；国务院公布的调休上班日计入。立项当天如为工作日记第1个工作日。</div>':'<div class="warn">元旦暂按1月1日至3日放假，不调休；1月其余日期按周一至周五上班暂算工期。2月起待正式安排。</div>'}
     <div class="callegend"><span><i class="legend-dot normal"></i>${official?'工作日':'周一至周五'}</span><span><i class="legend-dot weekend"></i>普通周末</span>${official?'<span><i class="legend-dot holiday"></i>法定放假</span><span><i class="legend-dot makeup-work"></i>调休上班</span>':'<span><i class="legend-dot holiday"></i>暂定放假</span>'}</div>
     <div class="base calstats"><div><div class="lab">今日</div><div class="val">${today()}</div></div><div><div class="lab">今日性质</div><div class="val">${esc(typeText)}</div></div><div><div class="lab">全年计入工期工作日</div><div class="val">${official?stats.work+'天':'待公布'}</div></div><div><div class="lab">官方放假覆盖</div><div class="val">${official?stats.holiday+'天':'待公布'}</div></div><div><div class="lab">调休上班</div><div class="val">${official?stats.makeup+'天':'待公布'}</div></div></div>
     <div class="calyear">${months}</div>
@@ -2450,7 +2452,7 @@ function renderCalendar(){
     <div class="muted" style="margin-bottom:7px">${esc(cal.source)}</div>
     <div style="overflow:auto"><table class="caltable"><thead><tr><th>节日</th><th>官方放假日期（不计工期）</th><th>官方调休上班日（计入工期）</th></tr></thead><tbody>${rows}</tbody></table></div>
   </div></section>`:''}
-  <section class="panel"><div class="ph"><b>自动计算说明</b></div><div class="pb"><div class="muted">施工站的“当前第几个工作日、总工期截止、剩余工作日、是否超期”全部查询这张年度日历。若工期跨入尚未录入国务院正式安排的年份，系统停止给出自动截止日期并提示补充官方年度日历。</div></div></section>`;
+  <section class="panel"><div class="ph"><b>自动计算说明</b></div><div class="pb"><div class="muted">施工站的“当前第几个工作日、总工期截止、剩余工作日、是否超期”全部查询这张年度日历。2027年1月工期按暂定日历计算，正式安排公布后复核；超出已配置日期时暂停自动截止计算。</div></div></section>`;
   document.querySelectorAll('[data-calyear]').forEach(b=>b.onclick=()=>{location.hash='calendar?year='+b.dataset.calyear});
 }
 
